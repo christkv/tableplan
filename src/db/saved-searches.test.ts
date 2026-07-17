@@ -13,7 +13,7 @@ describe("saved recipe searches", () => {
   });
 
   it("turns stored filters back into a recipe URL", () => {
-    expect(savedRecipeSearchUrl({ query: "", ingredient: "tofu", tags: ["main-dish"], tagMatch: "all" }))
+    expect(savedRecipeSearchUrl({ query: "", ingredient: "tofu", tags: ["main-dish"], tagMatch: "all", scope: "all" }))
       .toBe("/recipes?ingredient=tofu&tag=main-dish");
   });
 });

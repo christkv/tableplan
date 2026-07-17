@@ -48,8 +48,12 @@ describe("MCP access context", () => {
       "save_recipe_search",
       "delete_saved_search",
       "get_recipe",
+      "import_recipe_text",
+      "get_recipe_import",
+      "publish_recipe_import",
       "get_meal_plan",
       "add_recipe_to_plan",
+      "update_meal_plan_servings",
       "copy_previous_meal_plan",
       "generate_shopping_list",
       "get_shopping_list",
@@ -57,8 +61,13 @@ describe("MCP access context", () => {
     expect(payload.result.tools.find((tool) => tool.name === "search_recipes")?.annotations?.readOnlyHint).toBe(true);
     expect(payload.result.tools.find((tool) => tool.name === "search_recipes")?.inputSchema?.properties).toHaveProperty("tags");
     expect(payload.result.tools.find((tool) => tool.name === "search_recipes")?.inputSchema?.properties).toHaveProperty("tagMatch");
+    expect(payload.result.tools.find((tool) => tool.name === "search_recipes")?.inputSchema?.properties).toHaveProperty("scope");
+    expect(payload.result.tools.find((tool) => tool.name === "get_recipe")?.inputSchema?.properties).toHaveProperty("servings");
+    expect(payload.result.tools.find((tool) => tool.name === "import_recipe_text")?.annotations?.readOnlyHint).toBe(false);
+    expect(payload.result.tools.find((tool) => tool.name === "get_recipe_import")?.annotations?.readOnlyHint).toBe(true);
     expect(payload.result.tools.find((tool) => tool.name === "save_recipe_search")?.annotations?.readOnlyHint).toBe(false);
     expect(payload.result.tools.find((tool) => tool.name === "add_recipe_to_plan")?.annotations?.readOnlyHint).toBe(false);
+    expect(payload.result.tools.find((tool) => tool.name === "update_meal_plan_servings")?.annotations?.readOnlyHint).toBe(false);
     expect(payload.result.tools.find((tool) => tool.name === "copy_previous_meal_plan")?.annotations?.readOnlyHint).toBe(false);
   });
 });

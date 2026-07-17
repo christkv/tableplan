@@ -505,6 +505,36 @@ Agent safety:
 - Shopping-list and meal-plan mutations return previews before bulk changes where possible.
 - Max result limits to avoid flooding model context.
 
+## [Phase 13: Private Recipe Ingestion](phases/phase-13-private-recipe-ingestion.md)
+
+Deliverables:
+
+- User-private and explicitly household-shared recipe ownership.
+- Paste, document-upload, and image-upload creation paths.
+- Private R2 source artifacts with retention and authenticated preview.
+- Per-ingestion Cloudflare Agent with a durable AgentWorkflow.
+- Workers AI document/image conversion and JSON-schema recipe extraction.
+- Human review and approval before relational publishing.
+- Canonical ingredient lookup, conservative mapping, and household aliases.
+- Search, detail, favorites, planning, shopping, REST, and MCP authorization.
+
+Build order:
+
+1. Ownership and manual private recipes.
+2. Artifacts, jobs, drafts, and status transitions.
+3. Agent and Workflow extraction with local mocks.
+4. Ingredient mapping review and idempotent publish.
+5. API/MCP contracts and privacy-aware indexing.
+6. Preview security, retention, cost, and recovery gate.
+
+Acceptance:
+
+- Model output is always reviewed before publish.
+- Unknown ingredients remain visible and do not pollute the global vocabulary.
+- Private recipes and artifacts are non-discoverable across users/households.
+- Retry and duplicate approval create exactly one recipe.
+- Local development does not require cloud AI credentials.
+
 ## Recommended Build Order
 
 1. Bootstrap app and local D1.
@@ -519,6 +549,8 @@ Agent safety:
 10. Agent Skills.
 11. Vector search.
 12. Full import and production hardening.
+13. Private recipe ingestion can proceed after its ownership migration and may
+    run in parallel with blocked Phase 10 cloud provisioning.
 
 ## Open Questions
 

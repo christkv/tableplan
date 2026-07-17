@@ -1,4 +1,5 @@
 import type { MeasurementSystem } from "../domain/quantity/types";
+import { parseMealSlotDefinitions, readStoredMealSlots, type MealSlotDefinition } from "../domain/planning/slots";
 
 export function parseMeasurementSystem(value: unknown): MeasurementSystem {
   if (value === "original" || value === "us" || value === "metric") return value;
@@ -26,4 +27,17 @@ export async function updateMeasurementSystem(db: D1Database, userId: string, ho
     db.prepare("UPDATE household_preferences SET measurement_system = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ?").bind(measurementSystem, householdId),
   ]);
   return measurementSystem;
+}
+
+export async function getMealPlanSlots(db: D1Database, householdId: string): Promise<MealSlotDefinition[]> {
+  const row = await db.prepare("SELECT meal_slots_json FROM household_preferences WHERE household_id = ?")
+    .bind(householdId).first<{ meal_slots_json: string }>();
+  return readStoredMealSlots(row?.meal_slots_json);
+}
+
+export async function updateMealPlanSlots(db: D1Database, householdId: string, ids: unknown[], labels: unknown[]): Promise<MealSlotDefinition[]> {
+  const slots = parseMealSlotDefinitions(ids, labels);
+  await db.prepare("UPDATE household_preferences SET meal_slots_json = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ?")
+    .bind(JSON.stringify(slots), householdId).run();
+  return slots;
 }

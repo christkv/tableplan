@@ -1,5 +1,5 @@
 import { normalizeRecipeSearch, recipeSearchUrl } from "../domain/recipe-search";
-import type { RecipeSearchInput, RecipeTagMatch } from "../domain/recipes";
+import type { RecipeSearchInput, RecipeSearchScope, RecipeTagMatch } from "../domain/recipes";
 
 export interface SavedRecipeSearch {
   id: string;
@@ -8,6 +8,7 @@ export interface SavedRecipeSearch {
   ingredient: string;
   tags: string[];
   tagMatch: RecipeTagMatch;
+  scope: RecipeSearchScope;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ interface SavedRecipeSearchRow {
   ingredient: string;
   tags_json: string;
   tag_match: string;
+  scope: string;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +42,7 @@ function toSavedSearch(row: SavedRecipeSearchRow): SavedRecipeSearch {
     ingredient: row.ingredient,
     tags: parseTags(row.tags_json),
     tagMatch: row.tag_match === "any" ? "any" : "all",
+    scope: row.scope === "catalog" || row.scope === "mine" || row.scope === "household" ? row.scope : "all",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -52,13 +55,13 @@ export function normalizeSavedSearchName(value: unknown): string {
   return name;
 }
 
-export function savedRecipeSearchUrl(search: Pick<SavedRecipeSearch, "query" | "ingredient" | "tags" | "tagMatch">): string {
+export function savedRecipeSearchUrl(search: Pick<SavedRecipeSearch, "query" | "ingredient" | "tags" | "tagMatch" | "scope">): string {
   return recipeSearchUrl(search);
 }
 
 export async function listSavedRecipeSearches(db: D1Database, householdId: string): Promise<SavedRecipeSearch[]> {
   const rows = await db.prepare(`
-    SELECT id, name, query, ingredient, tags_json, tag_match, created_at, updated_at
+    SELECT id, name, query, ingredient, tags_json, tag_match, scope, created_at, updated_at
     FROM saved_recipe_searches
     WHERE household_id = ?
     ORDER BY updated_at DESC, name
@@ -76,18 +79,19 @@ export async function createSavedRecipeSearch(db: D1Database, input: {
   const name = normalizeSavedSearchName(input.name);
   const filters = normalizeRecipeSearch(input.filters);
   await db.prepare(`
-    INSERT INTO saved_recipe_searches (id, household_id, created_by_user_id, name, query, ingredient, tags_json, tag_match)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO saved_recipe_searches (id, household_id, created_by_user_id, name, query, ingredient, tags_json, tag_match, scope)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(household_id, name) DO UPDATE SET
       query = excluded.query,
       ingredient = excluded.ingredient,
       tags_json = excluded.tags_json,
       tag_match = excluded.tag_match,
+      scope = excluded.scope,
       created_by_user_id = excluded.created_by_user_id,
       updated_at = CURRENT_TIMESTAMP
-  `).bind(id, input.householdId, input.userId, name, filters.query, filters.ingredient, JSON.stringify(filters.tags), filters.tagMatch).run();
+  `).bind(id, input.householdId, input.userId, name, filters.query, filters.ingredient, JSON.stringify(filters.tags), filters.tagMatch, filters.scope).run();
   const saved = await db.prepare(`
-    SELECT id, name, query, ingredient, tags_json, tag_match, created_at, updated_at
+    SELECT id, name, query, ingredient, tags_json, tag_match, scope, created_at, updated_at
     FROM saved_recipe_searches WHERE household_id = ? AND name = ?
   `).bind(input.householdId, name).first<SavedRecipeSearchRow>();
   if (!saved) throw new Error("Saved search could not be created");

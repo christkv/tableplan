@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildFtsQuery, buildRecipeTagPredicate } from "./recipes";
+import { buildFtsQuery, buildRecipeAccessPredicate, buildRecipeTagPredicate } from "./recipes";
 
 describe("buildFtsQuery", () => {
   it("builds a bounded implicit AND query", () => {
@@ -13,6 +13,28 @@ describe("buildFtsQuery", () => {
 
   it("limits token count", () => {
     expect(buildFtsQuery("1 2 3 4 5 6 7 8 9 10 11 12 13").split(" AND ")).toHaveLength(12);
+  });
+});
+
+describe("buildRecipeAccessPredicate", () => {
+  const access = { userId: "user-1", householdId: "household-1" };
+
+  it("allows catalog, owned private, and household-shared recipes in all scope", () => {
+    const predicate = buildRecipeAccessPredicate(access);
+    expect(predicate.sql).toContain("r.visibility = 'catalog'");
+    expect(predicate.sql).toContain("r.owner_user_id = ?");
+    expect(predicate.sql).toContain("r.owner_household_id = ?");
+    expect(predicate.bindings).toEqual(["user-1", "household-1"]);
+  });
+
+  it("restricts mine to the authenticated owner", () => {
+    expect(buildRecipeAccessPredicate(access, "mine")).toEqual({ sql: "r.status = 'active' AND r.owner_user_id = ?", bindings: ["user-1"] });
+  });
+
+  it("restricts household scope to explicitly shared rows", () => {
+    const predicate = buildRecipeAccessPredicate(access, "household");
+    expect(predicate.sql).toContain("r.visibility = 'household'");
+    expect(predicate.bindings).toEqual(["household-1"]);
   });
 });
 

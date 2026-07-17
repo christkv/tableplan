@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { shiftPlannedDate } from "./planning";
+import { parsePlannedServings, shiftPlannedDate } from "./planning";
 
 describe("meal plan week copying", () => {
   it("preserves each weekday when copying to a later week", () => {
@@ -14,5 +14,18 @@ describe("meal plan week copying", () => {
 
   it("rejects source items outside the source week", () => {
     expect(() => shiftPlannedDate("2026-07-20", "2026-07-13", "2026-07-20")).toThrow("outside the source week");
+  });
+});
+
+describe("meal plan servings", () => {
+  it("accepts fractional family servings", () => {
+    expect(parsePlannedServings("2.5")).toBe(2.5);
+    expect(parsePlannedServings(0.25)).toBe(0.25);
+  });
+
+  it("rejects invalid and excessive values", () => {
+    expect(() => parsePlannedServings(0)).toThrow("between");
+    expect(() => parsePlannedServings(101)).toThrow("between");
+    expect(() => parsePlannedServings("many")).toThrow("between");
   });
 });

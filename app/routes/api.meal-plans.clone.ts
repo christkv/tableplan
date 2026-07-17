@@ -3,6 +3,7 @@ import { cloudflareContext } from "../context";
 import { requireApiScope } from "../../src/auth/api-keys";
 import { addDays, startOfIsoWeek } from "../../src/domain/planning/dates";
 import { copyMealPlanWeek, MealPlanCopyError } from "../../src/db/planning";
+import { refreshShoppingListForPlan } from "../../src/db/shopping";
 
 export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
@@ -18,6 +19,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       targetStartsOn,
       timezone: "UTC",
     });
+    await refreshShoppingListForPlan(env.DB, access.householdId, copied.planId);
     return Response.json({ ...copied, week: targetStartsOn }, { status: 201 });
   } catch (error) {
     if (error instanceof MealPlanCopyError) return Response.json({ code: error.code, message: error.message }, { status: 409 });

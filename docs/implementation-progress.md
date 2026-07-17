@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 This is the restart ledger for Tableplan. Update it after every verified
 checkpoint. A phase is complete only when its acceptance criteria are met; an
@@ -11,13 +11,14 @@ OAuth have been verified.
 
 - **Usable checkpoint:** Local MVP with a deterministic recipe sample,
   first-party authentication, recipe/favorite UI, weekly planning, combined
-  shopping lists, scoped REST API keys, OpenAPI, MCP tools, and Agent Skills.
+  shopping lists, private recipe text ingestion/review/edit/share, scoped REST
+  API keys, OpenAPI, MCP tools, and Agent Skills.
 - **Active phase:** Phase 10 - Vector and Hybrid Search.
 - **Status:** Blocked on provisioned Workers AI/Vectorize preview bindings for
   end-to-end implementation and relevance measurement. FTS remains the active,
   required fallback.
-- **Next local task:** Add the versioned embedding document builder and
-  relevance fixtures.
+- **Next local task:** Fresh desktop/mobile screenshot and accessibility pass
+  for Phase 13; Phase 10 embedding fixtures remain independently ready.
 - **Next external task:** Provision preview D1, Workers AI, and Vectorize;
   replace placeholder IDs/URLs in `wrangler.jsonc`.
 
@@ -40,7 +41,7 @@ OAuth have been verified.
   weekly plan editing, and combined US/metric shopping-list snapshots.
 - Scoped, hashed, expiring, revocable API keys shown once at creation.
 - Authenticated REST endpoints plus an OpenAPI 3.1 document.
-- Authenticated Streamable HTTP MCP server with six read/write-annotated tools
+- Authenticated Streamable HTTP MCP server with thirteen read/write-annotated tools
   and structured results.
 - Credential-free REST, MCP, and import-administration Agent Skills under
   `src/skills/`.
@@ -64,6 +65,7 @@ OAuth have been verified.
 | 10. Vector/hybrid search | Not implemented | Needs preview AI/Vectorize bindings, embedding pipeline, ranking, and relevance evaluation |
 | 11. Full import/production | Not started | Needs provenance/capacity approval, clean full staging, preview rehearsal, and cloud credentials |
 | 12. Hardening/operations | Partial | Operations docs and local quality gate exist; rate limiting, audit events, CI/CD, load/accessibility/browser QA remain |
+| 13. Private recipe ingestion | Implemented locally | Ownership migration, local text path, R2 artifacts, AgentWorkflow/Workers AI cloud path, review/mapping, edit/share, REST/MCP, and cross-account isolation pass; cloud binary extraction and fresh browser screenshots remain |
 
 ## Verification Log
 
@@ -102,6 +104,31 @@ OAuth have been verified.
 | 2026-07-16 | Concurrent plan creation regression | Two simultaneous first writes resolved to one plan ID and retained both items after the household-week unique-index fix |
 | 2026-07-16 | Settings/clone quality gate | `npm run check` passed: generated types, TypeScript, 14 files/58 tests, client build, and Worker SSR build |
 | 2026-07-16 | Clean local restart | Development Worker restarted on `http://127.0.0.1:5173`; health, settings, and planner routes returned HTTP 200 |
+| 2026-07-17 | Private recipe ingestion plan | Added Phase 13 covering user-private ownership, R2 artifacts, Agents plus Workflows, structured extraction, ingredient review, approval, and privacy testing |
+| 2026-07-17 | Private recipe migration | Applied `0004_private_recipe_ingestion.sql` locally; existing 4,927 recipes remain catalog-visible and ownership/job/alias/audit tables are active |
+| 2026-07-17 | Private recipe quality tests | 15 files/65 tests pass, including deterministic extraction, access predicates, OpenAPI, and thirteen-tool MCP discovery; production client/SSR build passes |
+| 2026-07-17 | Private recipe live smoke | Pasted text produced a four-ingredient/three-step review, canonical mappings, private publication, owner-scoped search, edit/share controls, and plan eligibility after sharing |
+| 2026-07-17 | Cross-account privacy smoke | A second local account received 404 for both private and other-household shared recipe IDs; private detail omitted Add to plan |
+| 2026-07-17 | Recipe serving adjustment | Added detail-page stepper/manual serving input, quantity/range scaling before US/EU conversion, plan handoff, REST/MCP serving parameters, and unresolved-line preservation |
+| 2026-07-17 | Serving adjustment verification | `npm run check` passed with 15 files/69 tests and both production builds; live 4-to-8 serving smoke doubled all four parsed ingredient quantities and reported scale 2 |
+| 2026-07-17 | Serving stepper synchronization | Keyed the manual serving form to loader state so plus/minus navigation remounts the middle input with the newly selected count |
+| 2026-07-17 | Plan/list serving propagation | Added inline planned-serving edits plus REST and MCP writes; additions, copies, removals, serving changes, and owned recipe edits now refresh any linked list in place while preserving checked items |
+| 2026-07-17 | Shopping source plan | Shopping-list data and UI now identify the source plan by name, date range, meal count, and a link back to its week |
+| 2026-07-17 | Live propagation smoke | Updating one planned meal from 4 to 8 servings retained the shopping-list ID and doubled garlic, oil, spaghetti, and tomato quantities; the response identified the correct source week and one planned meal |
+| 2026-07-17 | Checked-item retention smoke | Checked spaghetti remained checked when the planned meal changed from 8 to 10 servings; its amount recalculated to 1 kg without replacing the shopping-list ID |
+| 2026-07-17 | Serving propagation quality gate | `npm run check` passed: generated Cloudflare/route types, TypeScript, 15 files/71 tests, client build, and Worker SSR build |
+| 2026-07-17 | Contextual plan-slot selection | Plan-cell Add links now preserve week, date, and slot through recipe search, facets, saved searches, detail, favorite actions, and serving adjustments; the recipe action writes directly to the originating slot |
+| 2026-07-17 | Contextual add live smoke | Selecting Garlic Chicken N Gravy for the empty 2026-07-18 lunch cell created a four-serving item on that exact date/slot; the temporary item was removed after verification |
+| 2026-07-17 | Contextual add quality gate | `npm run check` passed: generated Cloudflare/route types, TypeScript, 16 files/74 tests, client build, and Worker SSR build |
+| 2026-07-17 | Custom meal sections | Added ordered household meal-section settings with stable IDs, editable labels, add/remove/reorder controls, planner/context integration, and REST/MCP validation against configured sections |
+| 2026-07-17 | Custom meal-section migration | Applied `0005_custom_meal_slots.sql` locally; existing households receive Breakfast, Lunch, Dinner, and Snack defaults |
+| 2026-07-17 | Custom section live smoke | Reordered sections, renamed Dinner to Supper, removed Snack, and added After school; the existing dinner meal remained attached under Supper and contextual links used `after-school`; defaults were restored after verification |
+| 2026-07-17 | Custom section quality gate | `npm run check` passed: generated Cloudflare/route types, TypeScript, 17 files/78 tests, client build, and Worker SSR build |
+| 2026-07-17 | Recipe card title headers | Replaced misleading one-character/quote tiles with full recipe titles in stable three-line headers on Recipes and Favorites; live SSR showed quoted titles correctly and `npm run check` passed with 17 files/78 tests plus both builds |
+| 2026-07-17 | Compact recipe card headers | Reduced recipe title headers from 96px/three lines to a stable 70px/two lines to remove excess vertical space while preserving aligned card rows |
+| 2026-07-17 | Single-line recipe card headers | Tightened recipe and favorite card headers to 48px with one-line ellipsis titles and full-name hover text |
+| 2026-07-17 | Infinite recipe scrolling | Added deterministic offset pagination and an intersection-observer recipe grid that preloads 24 more cards near the viewport while retaining all text, ingredient, tag, scope, and plan-slot filters; includes deduplication, loading, completion, and retry states |
+| 2026-07-17 | Infinite scrolling verification | Live offset 0/24 requests returned two unique 24-card pages from 4,928 recipes with zero overlap; `npm run check` passed with 17 files/79 tests plus client and Worker builds |
 
 Run `npm run check` and record the result after any code change.
 
@@ -154,6 +181,9 @@ npx wrangler d1 execute DB --local --command "SELECT id, status, rows_seen, rows
   text and ingredient filters; selected tags default to All matching.
 - Saved recipe searches are household-scoped and names are unique per household;
   saving an existing name replaces its filter definition.
+- User recipes default to `user_private`; shared plans accept only catalog or
+  explicitly household-visible recipes. Unknown private ingredient terms remain
+  unresolved or use household aliases rather than mutating global vocabulary.
 
 ## External Configuration
 

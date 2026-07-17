@@ -15,15 +15,16 @@ Create environment-specific resources and replace placeholder IDs in `wrangler.j
 ```bash
 npx wrangler d1 create meal-planner-preview
 npx wrangler d1 create meal-planner-production
-npx wrangler vectorize create meal-planner-recipes-preview --dimensions=768 --metric=cosine
-npx wrangler vectorize create meal-planner-recipes-production --dimensions=768 --metric=cosine
-npx wrangler queues create meal-planner-import-preview
-npx wrangler queues create meal-planner-import-production
-npx wrangler r2 bucket create meal-planner-assets-preview
-npx wrangler r2 bucket create meal-planner-assets-production
+npx wrangler r2 bucket create meal-planner-private-recipes-preview
+npx wrangler r2 bucket create meal-planner-private-recipes-production
 ```
 
-R2 is optional until import artifacts need cloud storage.
+Private recipe ingestion requires R2 and Workers AI. The Worker deployment
+creates or updates the `RecipeIngestionAgent` Durable Object class and the
+environment-specific `RecipeIngestionWorkflow` from `wrangler.jsonc`. Confirm
+the account has Workers AI, Workflows, Durable Objects, and R2 enabled before
+deploying preview. Vectorize and import queues remain future Phase 10/11
+resources and are not required for private recipe ingestion.
 
 ## Secrets
 
@@ -54,6 +55,10 @@ After deployment:
 - Create a meal plan and generate a shopping list.
 - Exercise a scoped test API key.
 - Connect MCP Inspector and one supported assistant client.
+- Paste and publish a private text recipe, then confirm a second account gets
+  404 for its ID.
+- Upload an image/PDF, review the Workers AI extraction, publish it, share it
+  with the household, and add it to a plan.
 
 ## Deploy Production
 
@@ -77,6 +82,8 @@ Register exact preview and production callback URLs with Google and remote assis
 - D1 schema/data changes are forward-fixed from migrations or restored/rebuilt through a reviewed export/import procedure.
 - Vectorize can be rebuilt from relational recipe IDs and embedding-document versions.
 - Queue failures must leave FTS and normal application reads operational.
+- Failed ingestion workflows retain an owned job and artifact for retry or
+  support inspection; they do not create a recipe row.
 
 ## CI Deployment
 

@@ -36,15 +36,38 @@ export async function ensureMealPlan(db: D1Database, input: { householdId: strin
   return plan.id;
 }
 
-export async function addMealPlanItem(db: D1Database, input: { planId: string; recipeId: string; date: string; slot: string; servings: number; notes?: string }) {
+export async function addMealPlanItem(db: D1Database, input: { householdId: string; planId: string; recipeId: string; date: string; slot: string; servings: number; notes?: string }) {
   const id = crypto.randomUUID();
-  await db.prepare("INSERT INTO meal_plan_items (id, meal_plan_id, recipe_id, planned_date, meal_slot, servings, notes) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, input.planId, input.recipeId, input.date, input.slot, String(input.servings), input.notes ?? null).run();
+  const inserted = await db.prepare(`INSERT INTO meal_plan_items (id, meal_plan_id, recipe_id, planned_date, meal_slot, servings, notes)
+    SELECT ?, mp.id, r.id, ?, ?, ?, ? FROM meal_plans mp JOIN recipes r ON r.id=?
+    WHERE mp.id=? AND mp.household_id=? AND r.status='active' AND (r.visibility='catalog' OR (r.visibility='household' AND r.owner_household_id=?))`)
+    .bind(id, input.date, input.slot, String(input.servings), input.notes ?? null, input.recipeId, input.planId, input.householdId, input.householdId).run();
+  if (!inserted.meta.changes) throw new Error("Recipe must be shared with this household before it can be planned");
   return id;
 }
 
 export async function removeMealPlanItem(db: D1Database, householdId: string, itemId: string) {
-  await db.prepare("DELETE FROM meal_plan_items WHERE id = ? AND meal_plan_id IN (SELECT id FROM meal_plans WHERE household_id = ?)").bind(itemId, householdId).run();
+  const item = await db.prepare("SELECT mpi.meal_plan_id AS plan_id FROM meal_plan_items mpi JOIN meal_plans mp ON mp.id=mpi.meal_plan_id WHERE mpi.id=? AND mp.household_id=?")
+    .bind(itemId, householdId).first<{ plan_id: string }>();
+  if (!item) return null;
+  await db.prepare("DELETE FROM meal_plan_items WHERE id = ? AND meal_plan_id = ?").bind(itemId, item.plan_id).run();
+  return item.plan_id;
+}
+
+export function parsePlannedServings(value: unknown): number {
+  const servings = Number(value);
+  if (!Number.isFinite(servings) || servings < 0.25 || servings > 100) throw new Error("Servings must be between 0.25 and 100");
+  return servings;
+}
+
+export async function updateMealPlanItemServings(db: D1Database, input: { householdId: string; itemId: string; servings: number }) {
+  const servings = parsePlannedServings(input.servings);
+  const item = await db.prepare(`SELECT mpi.meal_plan_id AS plan_id FROM meal_plan_items mpi JOIN meal_plans mp ON mp.id=mpi.meal_plan_id
+    WHERE mpi.id=? AND mp.household_id=?`).bind(input.itemId, input.householdId).first<{ plan_id: string }>();
+  if (!item) throw new Error("Meal plan item not found");
+  await db.prepare("UPDATE meal_plan_items SET servings=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND meal_plan_id=?")
+    .bind(String(servings), input.itemId, item.plan_id).run();
+  return item.plan_id;
 }
 
 export class MealPlanCopyError extends Error {

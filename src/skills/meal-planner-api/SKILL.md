@@ -19,9 +19,15 @@ Use the API for explicit HTTP integrations and structured data access. Read
 5. Read the target ISO week before adding meals.
 6. Confirm the date, slot, recipe, and servings before a write when the user's
    intent is ambiguous.
-7. Generate a shopping list only after plan changes are complete.
-8. Return compact results and identify partial ingredient parses instead of
+7. Update a plan item's servings when its expected yield changes; the server
+   refreshes an existing linked shopping list without clearing checked items.
+8. Generate a shopping list only after plan changes are complete.
+9. Return compact results and identify partial ingredient parses instead of
    inventing quantities.
+
+For private recipe ingestion, create a text job, poll it, present the full draft
+for review, and publish only after approval. Keep the default `user_private`
+visibility unless the user explicitly asks to share it with the household.
 
 ## Request Rules
 
@@ -37,7 +43,7 @@ Use the API for explicit HTTP integrations and structured data access. Read
 
 ## Safety
 
-Recipe search and reads are non-mutating. Adding a plan item and generating a
-shopping list mutate household data. Describe the intended write and obtain
-confirmation unless the user already gave complete, explicit instructions.
-
+Recipe search and reads are non-mutating. Adding or resizing a plan item and
+generating a shopping list mutate household data. Describe the intended write
+and obtain confirmation unless the user already gave complete, explicit instructions.
+Starting an ingestion stores private source data; publishing creates a recipe.

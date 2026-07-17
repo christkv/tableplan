@@ -2,6 +2,7 @@ import type { Route } from "./+types/api.recipes.search";
 import { cloudflareContext } from "../context";
 import { requireApiScope } from "../../src/auth/api-keys";
 import { searchRecipes } from "../../src/db/recipes";
+import { normalizeRecipeScope } from "../../src/domain/recipe-search";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -13,8 +14,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     ingredient: url.searchParams.get("ingredient") ?? undefined,
     tags: url.searchParams.getAll("tag"),
     tagMatch: url.searchParams.get("tagMatch") === "any" ? "any" : "all",
+    scope: normalizeRecipeScope(url.searchParams.get("scope")),
     limit: Number(url.searchParams.get("limit") ?? 24),
     offset: Number(url.searchParams.get("offset") ?? 0),
-  });
+  }, access);
   return Response.json(result);
 }

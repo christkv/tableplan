@@ -26,6 +26,7 @@
   "dependencies": {
     "@base-ui/react": "latest",
     "@modelcontextprotocol/sdk": "latest",
+    "agents": "^0.17.4",
     "better-auth": "latest",
     "class-variance-authority": "latest",
     "clsx": "latest",

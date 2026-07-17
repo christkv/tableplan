@@ -1,12 +1,12 @@
 # Implementation Phases
 
-Date: 2026-07-16
+Date: 2026-07-17
 
 This directory is the execution-level roadmap for the family meal planner. Each phase is a separately deliverable milestone with explicit dependencies, scope, verification, and exit criteria.
 
 ## Planning Decisions
 
-- The canonical roadmap has 13 phases numbered 0 through 12.
+- The canonical roadmap has 14 phases numbered 0 through 13.
 - Local development and Cloudflare deployment use the same application and domain services; only service bindings differ.
 - Phase 2 imports a deterministic sample for product development. The full 500,471-row production import is delayed until Phase 11, after schema and search contracts are stable.
 - Favorites are included in Phase 3 so the first recipe experience supports discovery, drill-down, and saving.
@@ -32,6 +32,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 | 10 | [Vector and Hybrid Search](phase-10-vector-hybrid-search.md) | Semantic recipe discovery with FTS fallback | Phase 3 |
 | 11 | [Full Import and Production Launch](phase-11-full-import-production.md) | Reproducible full-catalog production release | Phases 6, 7, 10 |
 | 12 | [Hardening and Operations](phase-12-hardening-operations.md) | Operational, security, and recovery readiness | Phase 11 |
+| 13 | [Private Recipe Ingestion](phase-13-private-recipe-ingestion.md) | Reviewed text/file/image extraction into private recipes | Phases 3-7; Cloudflare AI, R2, Agents, and Workflows |
 
 ## Cross-Phase Rules
 
@@ -52,6 +53,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 | Personal versus household-owned API keys | Phase 6 | Personal creator with an explicit household binding |
 | Initial ChatGPT distribution model | Phase 8 | Private/internal preview before public distribution |
 | Nutrition enrichment | Phase 11 scope freeze | Post-MVP; preserve schema extension points only |
+| Private recipe default visibility | Phase 13 schema migration | User-private; require explicit household sharing before shared planning |
 
 ## Release Gates
 

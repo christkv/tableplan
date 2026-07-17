@@ -6,6 +6,11 @@ discovery and favorites, builds weekly plans, and combines scaled ingredients
 into US or metric shopping lists. The same data is available through a scoped
 REST API and an MCP server for assistant clients.
 
+Users can also paste recipe text or upload a document/image. Text extraction is
+deterministic during local development; Cloudflare Agents, Workflows, Workers
+AI, and private R2 artifacts handle deployed extraction. Every result remains a
+review draft until its owner publishes it as private or household-visible.
+
 ## Quick Start
 
 Prerequisites: Node.js 22 or newer and the source CSV in `data/`.
@@ -32,6 +37,7 @@ npm run check
 - [Implementation progress](docs/implementation-progress.md)
 - [Local development](docs/operations/local-development.md)
 - [Recipe import](docs/operations/recipe-import.md)
+- [Private recipe ingestion](docs/operations/private-recipe-ingestion.md)
 - [API and assistant integrations](docs/operations/api-and-integrations.md)
 - [Cloudflare deployment](docs/operations/cloudflare-deployment.md)
 - [Phase documents](docs/phases/README.md)
@@ -39,4 +45,3 @@ npm run check
 The OpenAPI 3.1 document is served by a running instance at
 `/api/v1/openapi.json`. Repository Agent Skills live under `src/skills/` and do
 not contain credentials.
-

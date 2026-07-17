@@ -11,6 +11,7 @@ Use the connected MCP tools for conversational meal planning. Read
 ## Planning Workflow
 
 1. Call `get_meal_plan` for the intended week before proposing changes.
+   Use the returned ordered `mealSlots`; never assume standard section names.
 2. Call `search_recipes` with the user's dish, dietary, or ingredient terms.
    Use exact `tags` with `tagMatch: "all"` to narrow or `"any"` to broaden.
 3. Call `get_recipe` for candidates when ingredient quantities or steps affect
@@ -24,7 +25,7 @@ Use the connected MCP tools for conversational meal planning. Read
 
 ## Tool Discipline
 
-- Do not guess recipe IDs, plan IDs, dates, or serving counts.
+- Do not guess recipe IDs, plan IDs, dates, meal-section IDs, or serving counts.
 - Use ISO `YYYY-MM-DD` dates.
 - Prefer one bounded search followed by detail reads over repeated broad
   searches.
@@ -32,14 +33,26 @@ Use the connected MCP tools for conversational meal planning. Read
   delete a search only when that change is requested.
 - Use `copy_previous_meal_plan` only for an empty target week. It preserves the
   relative weekday, slot, servings, notes, and leftovers.
+- Use `update_meal_plan_servings` when a planned meal's yield changes. A linked
+  shopping list is recalculated automatically while retaining checked items.
 - Treat ingredient parse-quality information as uncertainty. Preserve the raw
   ingredient line when normalized quantity data is incomplete.
 - Do not claim that incompatible units were combined.
 - Report tool authorization failures without requesting credentials in chat.
 
+## Private Recipe Workflow
+
+1. Call `import_recipe_text` only with recipe source supplied by the user.
+2. Call `get_recipe_import` until the job is `review_ready`.
+3. Present the extracted title, servings, ingredients, steps, warnings, and
+   unresolved mappings. Do not imply the draft has been published.
+4. Apply corrections supplied by the user to `publish_recipe_import`.
+5. Default to `user_private`. Use `household` only after explicit confirmation.
+
 ## Write Confirmation
 
-`save_recipe_search`, `delete_saved_search`, `add_recipe_to_plan`,
-`copy_previous_meal_plan`, and `generate_shopping_list` write household data. Confirm
+`import_recipe_text`, `publish_recipe_import`, `save_recipe_search`,
+`delete_saved_search`, `add_recipe_to_plan`, `update_meal_plan_servings`,
+`copy_previous_meal_plan`, and `generate_shopping_list` write user or household data. Confirm
 when the user has not already supplied the complete action. Generating a new
 shopping list creates a snapshot; it does not silently modify the meal plan.

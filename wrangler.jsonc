@@ -8,8 +8,25 @@
   "observability": { "enabled": true },
   "vars": {
     "APP_ENV": "local",
-    "BETTER_AUTH_URL": "http://localhost:5173"
+    "BETTER_AUTH_URL": "http://localhost:5173",
+    "RECIPE_EXTRACTION_MODE": "local",
+    "RECIPE_EXTRACTION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
+  "ai": { "binding": "AI" },
+  "r2_buckets": [
+    { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-local" }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RecipeIngestionAgent"] }
+  ],
+  "workflows": [
+    { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-local", "class_name": "RecipeIngestionWorkflow" }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -23,8 +40,22 @@
       "name": "family-meal-planner-preview",
       "vars": {
         "APP_ENV": "preview",
-        "BETTER_AUTH_URL": "https://meal-planner-preview.example.workers.dev"
+        "BETTER_AUTH_URL": "https://meal-planner-preview.example.workers.dev",
+        "RECIPE_EXTRACTION_MODE": "cloud",
+        "RECIPE_EXTRACTION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
       },
+      "ai": { "binding": "AI" },
+      "r2_buckets": [
+        { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-preview" }
+      ],
+      "durable_objects": {
+        "bindings": [
+          { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
+        ]
+      },
+      "workflows": [
+        { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-preview", "class_name": "RecipeIngestionWorkflow" }
+      ],
       "d1_databases": [
         {
           "binding": "DB",
@@ -38,8 +69,22 @@
       "name": "family-meal-planner",
       "vars": {
         "APP_ENV": "production",
-        "BETTER_AUTH_URL": "https://meal-planner.example.com"
+        "BETTER_AUTH_URL": "https://meal-planner.example.com",
+        "RECIPE_EXTRACTION_MODE": "cloud",
+        "RECIPE_EXTRACTION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
       },
+      "ai": { "binding": "AI" },
+      "r2_buckets": [
+        { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-production" }
+      ],
+      "durable_objects": {
+        "bindings": [
+          { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
+        ]
+      },
+      "workflows": [
+        { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-production", "class_name": "RecipeIngestionWorkflow" }
+      ],
       "d1_databases": [
         {
           "binding": "DB",

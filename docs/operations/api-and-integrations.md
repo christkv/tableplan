@@ -21,7 +21,7 @@ only the required scopes.
 | Scope | Allows |
 | --- | --- |
 | `recipes:read` | Recipe, tag-filter, and saved-search reads |
-| `recipes:write` | Create, replace, and delete household saved searches |
+| `recipes:write` | Saved searches plus private recipe ingestion/publication |
 | `plans:read` | Weekly plan reads |
 | `plans:write` | Add recipes to a weekly plan |
 | `shopping:read` | Read the latest shopping-list snapshot |
@@ -43,11 +43,41 @@ curl -sS "$TABLEPLAN_URL/api/v1/recipes/search?q=chickpea&tag=main-dish&tag=heal
 
 curl -sS "$TABLEPLAN_URL/api/v1/meal-plans?week=2026-07-13" \
   -H "Authorization: Bearer $TABLEPLAN_API_KEY"
+
+curl -sS "$TABLEPLAN_URL/api/v1/recipes/RECIPE_ID?servings=6" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY"
 ```
 
 Repeat `tag` to select multiple exact tags. `tagMatch=all` is the default and
 requires every selected tag; `tagMatch=any` requires at least one. Text,
 ingredient, and tag filters are combined with AND.
+Use `scope=all|catalog|mine|household` to drill into ownership and visibility.
+Recipe detail accepts an optional positive `servings` query parameter and
+returns `selectedServings`, `servingScale`, and adjusted parsed quantity fields.
+Unresolved raw ingredient lines remain unchanged.
+
+Create a review draft from text, poll it, then publish only after the user has
+approved the returned fields:
+
+```bash
+curl -sS -X POST "$TABLEPLAN_URL/api/v1/recipe-ingestions" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Tomato pasta\nServes 4\n\nIngredients\n400 g pasta\n...","filename":"family-pasta.txt"}'
+
+curl -sS "$TABLEPLAN_URL/api/v1/recipe-ingestions/INGESTION_ID" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY"
+
+curl -sS -X POST "$TABLEPLAN_URL/api/v1/recipe-ingestions/INGESTION_ID" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"visibility":"user_private"}'
+```
+
+The API accepts text ingestion. Browser upload supports the wider document and
+image formats. Publication defaults to `user_private`; `household` should be
+sent only after explicit confirmation. Unpublished jobs never appear in recipe
+search.
 
 Save a reusable household search, list saved searches, and delete one by its
 returned ID:
@@ -80,6 +110,20 @@ curl -sS -X POST "$TABLEPLAN_URL/api/v1/meal-plans" \
   }'
 ```
 
+Read the plan first and select `slot` from its `mealSlots` array. Households can
+rename, reorder, add, or remove meal sections under Settings, so clients must
+not assume a fixed slot catalog.
+
+Change the servings for an existing plan item. Any shopping list generated
+from that plan is refreshed in place, with checked items preserved:
+
+```bash
+curl -sS -X PATCH "$TABLEPLAN_URL/api/v1/meal-plan-items/PLAN_ITEM_ID" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"servings":8}'
+```
+
 Clone the previous week into an empty target week. This returns `409` rather
 than merging when the target already has meals:
 
@@ -109,7 +153,7 @@ insufficient. Revoke a compromised key immediately from Settings.
 
 ## MCP Endpoint
 
-The Streamable HTTP endpoint is `/mcp`. It publishes ten bounded tools:
+The Streamable HTTP endpoint is `/mcp`. It publishes fourteen bounded tools:
 
 | Tool | Required scope | Behavior |
 | --- | --- | --- |
@@ -117,15 +161,20 @@ The Streamable HTTP endpoint is `/mcp`. It publishes ten bounded tools:
 | `list_saved_searches` | `recipes:read` | Read reusable household recipe filters |
 | `save_recipe_search` | `recipes:write` | Create or replace a named household search |
 | `delete_saved_search` | `recipes:write` | Delete one saved search by ID |
-| `get_recipe` | `recipes:read` | Read ingredients, steps, and parse quality |
+| `get_recipe` | `recipes:read` | Read a recipe and optionally scale quantities to requested servings |
+| `import_recipe_text` | `recipes:write` | Extract text into an unpublished review draft |
+| `get_recipe_import` | `recipes:read` | Poll an owned import and inspect its draft/mappings |
+| `publish_recipe_import` | `recipes:write` | Publish an approved draft, private by default |
 | `get_meal_plan` | `plans:read` | Read one household ISO week |
 | `add_recipe_to_plan` | `plans:write` | Add a selected recipe, date, slot, and servings |
+| `update_meal_plan_servings` | `plans:write` | Change a plan item's servings and refresh its linked shopping list |
 | `copy_previous_meal_plan` | `plans:write` | Copy the previous week into an empty target week |
 | `generate_shopping_list` | `shopping:write` | Create a combined list snapshot |
 | `get_shopping_list` | `shopping:read` | Read the household's latest list |
 
 The server returns concise text plus structured content and marks read versus
-write tools with MCP annotations.
+write tools with MCP annotations. Shopping-list reads include their source plan
+ID, name, date range, and meal count.
 
 ## Claude Code
 

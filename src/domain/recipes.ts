@@ -7,6 +7,18 @@ export interface RecipeSummary {
   tags: string[];
   ingredients: string[];
   qualityFlags: string[];
+  visibility: RecipeVisibility;
+  origin: RecipeOrigin;
+  isOwner: boolean;
+}
+
+export type RecipeVisibility = "catalog" | "user_private" | "household";
+export type RecipeOrigin = "dataset" | "manual" | "paste" | "upload";
+export type RecipeSearchScope = "all" | "catalog" | "mine" | "household";
+
+export interface RecipeAccessContext {
+  userId: string;
+  householdId: string;
 }
 
 export interface RecipeIngredient {
@@ -34,6 +46,7 @@ export interface RecipeSearchInput {
   /** @deprecated Use tags for multi-tag search. */
   tag?: string;
   ingredient?: string;
+  scope?: RecipeSearchScope;
   limit?: number;
   offset?: number;
 }

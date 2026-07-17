@@ -20,6 +20,12 @@ The Vite development server prints the local URL, normally
 `http://localhost:5173` or `http://127.0.0.1:5173`. Both origins are trusted only
 in `APP_ENV=local`. Cloudflare bindings run through the local Worker runtime.
 
+Local recipe ingestion accepts pasted text and TXT/Markdown files without a
+cloud account. It stores source artifacts in the local R2 emulator and uses the
+deterministic parser before opening the review screen. PDF, DOCX, ODT, and image
+sources are accepted and retained locally, but extraction returns
+`cloud_ai_required`; use preview or remote Workers AI to exercise those formats.
+
 Create an email/password account from the sign-in screen. Usernames can be used
 for subsequent sign-in. Google sign-in appears only when local Google OAuth
 credentials are configured.
@@ -80,3 +86,6 @@ npm run check
   experimental-module warning during import and importer tests.
 - If Cloudflare binding types changed, run `npm run cf-typegen`.
 - If a cloud-only binding is unavailable, verify the feature falls back to its documented local mode instead of adding a production credential to browser code.
+- Workers AI bindings are remote even when the rest of Wrangler is local and
+  may print a usage warning. `RECIPE_EXTRACTION_MODE=local` ensures local text
+  ingestion does not invoke that binding.

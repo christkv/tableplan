@@ -1,5 +1,10 @@
 # Recipe Import Operations
 
+This runbook covers the administrator-owned catalog CSV pipeline. It does not
+cover user-private paste/file/image ingestion; see
+`docs/operations/private-recipe-ingestion.md`. Catalog imports retain
+`visibility=catalog` and `origin=dataset`.
+
 ## Safety Model
 
 The importer reads `data/recipes_ingredients.csv` and writes generated artifacts under `.import/`. It never edits the source CSV. Sample imports are the default development path; a full import is a deliberate Phase 11 operation.

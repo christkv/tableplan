@@ -13,16 +13,22 @@ describe("OpenAPI document", () => {
       "/health",
       "/recipes/search",
       "/recipes/{recipeId}",
+      "/recipe-ingestions",
+      "/recipe-ingestions/{ingestionId}",
       "/saved-searches",
       "/saved-searches/{savedSearchId}",
       "/meal-plans",
+      "/meal-plan-items/{itemId}",
       "/meal-plans/clone-previous",
       "/shopping-lists/generate",
       "/shopping-lists/latest",
     ]);
     expect(document.paths["/meal-plans"].post.operationId).toBe("addRecipeToMealPlan");
+    expect(document.paths["/meal-plan-items/{itemId}"].patch.operationId).toBe("updateMealPlanItemServings");
     expect(document.paths["/meal-plans/clone-previous"].post.operationId).toBe("clonePreviousMealPlan");
-    expect(document.paths["/recipes/search"].get.parameters.map((parameter) => parameter.name)).toEqual(["q", "ingredient", "tag", "tagMatch", "limit"]);
+    expect(document.paths["/recipes/search"].get.parameters.map((parameter) => parameter.name)).toEqual(["q", "ingredient", "tag", "tagMatch", "scope", "limit"]);
+    expect(document.paths["/recipe-ingestions"].post.operationId).toBe("createRecipeIngestion");
+    expect(document.paths["/recipe-ingestions/{ingestionId}"].post.operationId).toBe("publishRecipeIngestion");
     expect(document.paths["/saved-searches"].post.operationId).toBe("saveRecipeSearch");
   });
 });
