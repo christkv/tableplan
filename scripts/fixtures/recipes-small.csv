@@ -1,0 +1,4 @@
+id,name,description,ingredients,ingredients_raw,steps,servings,serving_size,tags
+42,Tomato Toast,Fast lunch,"[""bread"", ""tomatoes""]","[""2 slices bread"", ""1 lb tomatoes, chopped""]","[""Toast bread"", ""Top with tomatoes""]",2,1 plate,"[""Lunch"", ""15-minutes-or-less""]"
+43,Simple Soup,Warming soup,"[""stock"", ""salt""]","[""2 cups stock"", ""salt to taste""]","[""Heat stock"", ""don""t boil hard""]",4,1 bowl,"[""Soup""]"
+42,Duplicate Toast,Duplicate source record,"[""bread""]","[""1 slice bread""]","[""Toast""]",1,1 slice,"[""Duplicate""]"

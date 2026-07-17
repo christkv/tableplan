@@ -1,0 +1,59 @@
+{
+  "name": "family-meal-planner",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "preview": "npm run build && vite preview",
+    "typecheck": "wrangler types --env-interface CloudflareEnvironment && react-router typegen && tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm test && npm run build",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnvironment",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:preview": "wrangler d1 migrations apply DB --env preview --remote",
+    "db:migrate:production": "wrangler d1 migrations apply DB --env production --remote",
+    "import": "tsx scripts/import-recipes.ts",
+    "import:sample": "tsx scripts/import-recipes.ts sample data/recipes_ingredients.csv --rows 5000 --out .import/sample.sqlite --apply-local",
+    "deploy:preview": "npm run build && wrangler deploy --env preview",
+    "deploy:production": "npm run build && wrangler deploy --env production",
+    "postinstall": "wrangler types --env-interface CloudflareEnvironment"
+  },
+  "dependencies": {
+    "@base-ui/react": "latest",
+    "@modelcontextprotocol/sdk": "latest",
+    "better-auth": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "commander": "latest",
+    "csv-parse": "latest",
+    "he": "^1.2.0",
+    "isbot": "^5.1.36",
+    "lucide-react": "latest",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router": "8.0.0",
+    "tailwind-merge": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.45.0",
+    "@react-router/dev": "8.0.0",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/he": "^1.2.3",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "latest",
+    "tailwindcss": "^4.2.2",
+    "tsx": "latest",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.3",
+    "vitest": "latest",
+    "wrangler": "^4.111.0"
+  }
+}

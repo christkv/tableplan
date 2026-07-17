@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meal Planner MCP"
+  short_description: "Plan meals through connected MCP tools"
+  default_prompt: "Use $meal-planner-mcp to review my week and generate its shopping list."

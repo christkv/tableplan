@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meal Planner API"
+  short_description: "Use the Tableplan REST API safely"
+  default_prompt: "Use $meal-planner-api to search recipes and update my weekly meal plan."

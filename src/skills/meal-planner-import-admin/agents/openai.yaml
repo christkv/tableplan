@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meal Planner Import Admin"
+  short_description: "Run and review recipe catalog imports"
+  default_prompt: "Use $meal-planner-import-admin to run a sample import and review its QA report."
