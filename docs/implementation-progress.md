@@ -47,6 +47,9 @@ OAuth have been verified.
   `src/skills/`.
 - Serving-aware recipe/plan/shopping/combined print exports, account-email
   delivery, and expiring login-free store checklists.
+- Owner-managed household invitations with relationship labels, captured/queued
+  email, new password-account setup, existing-account acceptance, and shared
+  household selection.
 - Run, import, API/integration, deployment, architecture, and per-phase
   documentation.
 
@@ -69,11 +72,26 @@ OAuth have been verified.
 | 12. Hardening/operations | Partial | Operations docs and local quality gate exist; rate limiting, audit events, CI/CD, load/accessibility/browser QA remain |
 | 13. Private recipe ingestion | Implemented locally | Ownership migration, local text path, R2 artifacts, AgentWorkflow with separate OpenRouter text/vision model chains and Workers AI document conversion, review/mapping, edit/share, REST/MCP, and cross-account isolation pass; live cloud extraction and fresh browser screenshots remain |
 | 14. PDF/email/public checklists | Implemented locally | Four local print previews, hashed/revocable capability links, mobile checklist, account-email capture, Queue/Email/Browser bindings, REST/MCP, and tests implemented; preview PDF rendering and real email delivery remain |
+| 15. Household accounts/invitations | Implemented locally | Owner invite/revoke UI, relationship-aware memberships, seven-day hashed capabilities, Better Auth account setup, existing-account acceptance, local capture, queue dispatch, and live shared-household smoke pass; real preview email remains |
 
 ## Verification Log
 
 | Date | Verification | Result |
 | --- | --- | --- |
+| 2026-07-19 | Household accounts quality gate | `npm run check` passed: generated Cloudflare/route types, TypeScript, 119 tests across 26 files, client build, and Worker SSR build |
+| 2026-07-19 | Household invitation live smoke | Owner created a captured flatmate invitation; the recipient exchanged the fragment token, created a Better Auth username/password account, joined the owner's household, saw both members in Settings, and token reuse returned HTTP 410; smoke data was removed |
+| 2026-07-19 | Household invitation migration/tests | Applied `0007_household_invitations.sql` to existing local D1; focused capability, email, and household resolver suites passed 9 tests across 3 files |
+| 2026-07-19 | Official OpenRouter SDK migration | Replaced the hand-written Chat Completions transport with `@openrouter/sdk@0.13.66`, retained operation-specific model/fallback routing, strict schema and private-data provider policy, disabled secret-bearing SDK debug logs, added bounded SDK/HTTP diagnostics, and bound injected fetch to `globalThis` for Cloudflare Workers |
+| 2026-07-19 | SDK vision Agent smoke | Uploaded a PNG through the local browser action; the Agent and Workflow called `google/gemini-2.5-flash` through the official SDK, received a structured completion, saved the draft, reported review-ready, and completed successfully |
+| 2026-07-19 | OpenRouter SDK quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 111 tests across 24 files, client build, and Worker build |
+| 2026-07-19 | Configurable console logging | Added `LOG_LEVEL=DEBUG|INFO|ERROR` with local `DEBUG` and deployed `INFO` defaults, level-filtered structured Tableplan logging, and private-safe request/Agent/Workflow/model lifecycle events; a live local OpenRouter ingestion showed dispatch, progress, retry, and terminal error callbacks without source/account/key data |
+| 2026-07-19 | Logging quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 109 tests across 24 files, client build, and Worker build |
+| 2026-07-19 | Dynamic local auth origins | Replaced the fixed port `5173` trust list with loopback-only wildcard ports for `localhost`, `127.0.0.1`, and `::1`; verified username sign-in on Vite port `5175` over hostname and IPv6, confirmed an external cookie-bearing origin returns HTTP 403, and passed the 103-test full quality gate |
+| 2026-07-19 | Deterministic local test account | Added loopback-only `npm run seed:test-user`, documented `tableplanlocal` / `local-test@tableplan.test` credentials, verified repeat seeding, and received HTTP 200 from both username and email sign-in endpoints |
+| 2026-07-19 | Recipe upload chooser and drag/drop | Replaced programmatic hidden-input clicks with a native file input overlay spanning the full drop zone; browser-verified chooser modal, overlay-targeted drop synchronization, generic-MIME DOCX acceptance, selected filename/size, clear action, and 390px layout without overlap |
+| 2026-07-19 | Upload component quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 103 tests across 23 files, client build, and Worker build |
+| 2026-07-19 | Extraction environment names and upload guard | Renamed configuration to `RECIPE_EXTRACTION_PROVIDER` and provider-owned `OPENROUTER_*_MODEL` chains; verified TXT upload reaches review and unconfigured image upload stays on the source form without creating a dead D1 ingestion row |
+| 2026-07-19 | Upload/configuration quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 99 tests across 22 files, client build, and Worker build |
 | 2026-07-19 | Operation-specific OpenRouter models | Split recipe processing into configurable text/document and vision primary/fallback chains; JPEG/PNG/WebP now use direct private multimodal input while PDF/DOCX/ODT retain Workers AI document conversion before text extraction |
 | 2026-07-19 | Text/vision model quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 95 tests across 21 files, client build, and Worker build; live multimodal preview extraction remains pending a provisioned secret and cloud resources |
 | 2026-07-19 | OpenRouter extraction provider | Replaced provider-specific recipe inference with a direct OpenRouter adapter; added configurable primary/three-model fallback routing, strict JSON Schema, ZDR/no-data-collection routing, actual-model audit storage, official/EU endpoint validation, secrets/configuration documentation, and retained deterministic local extraction |
@@ -219,6 +237,10 @@ dumps, or any API key.
 ## Handoff Notes
 
 - The workspace was not a Git repository when implementation began.
+- Local Better Auth origin validation accepts any port only for the loopback
+  hosts `localhost`, `127.0.0.1`, and `::1`. This supports Vite's automatic port
+  selection while preview and production remain restricted to their configured
+  public origin.
 - Do not modify `data/recipes_ingredients.csv`.
 - A local test account, plan, favorite, shopping list, and revoked/active test
   key metadata may exist in ignored local D1 state.

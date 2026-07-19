@@ -4,6 +4,7 @@ import { createShoppingShare, parseShareExpiryDays } from "../sharing/shopping-s
 import { escapeHtml } from "../exports/render";
 
 export interface ShoppingEmailQueueMessage {
+  kind?: "shopping-list";
   deliveryId: string;
   rawToken: string;
 }
@@ -41,7 +42,7 @@ export async function queueShoppingListEmail(env: ShoppingEmailEnvironment, inpu
   await env.DB.prepare(`INSERT INTO email_deliveries
     (id, household_id, user_id, shopping_list_id, share_id, recipient_email, status)
     VALUES (?, ?, ?, ?, ?, ?, 'pending')`).bind(deliveryId, input.householdId, input.userId, input.listId, share.id, input.recipientEmail).run();
-  const message = { deliveryId, rawToken: share.token } satisfies ShoppingEmailQueueMessage;
+  const message = { kind: "shopping-list", deliveryId, rawToken: share.token } satisfies ShoppingEmailQueueMessage;
   if (env.EMAIL_MODE === "cloud") {
     if (!env.EMAIL_DELIVERY_QUEUE) throw new Error("Email delivery queue is not configured");
     await env.EMAIL_DELIVERY_QUEUE.send(message);

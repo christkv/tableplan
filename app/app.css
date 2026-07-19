@@ -188,12 +188,20 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .field-label { min-width: 0; display: grid; gap: 7px; color: #465149; font-size: 11px; font-weight: 730; }
 .field-label textarea { width: 100%; resize: vertical; padding: 11px 12px; border: 1px solid var(--border); border-radius: 5px; color: var(--text); background: var(--surface); font: inherit; font-size: 13px; font-weight: 450; line-height: 1.5; outline: none; }
 .field-label textarea:focus-visible, .mapping-row select:focus-visible { outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent); outline-offset: 2px; }
-.file-drop { min-height: 260px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #adb8b0; border-radius: 7px; color: var(--muted); background: var(--surface); text-align: center; cursor: pointer; }
-.file-drop:hover { border-color: var(--accent); background: #f8fbf9; }
+.file-upload-field { display: grid; gap: 10px; }
+.file-drop { position: relative; width: 100%; min-height: 260px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #adb8b0; border-radius: 7px; color: var(--muted); background: var(--surface); text-align: center; cursor: pointer; font: inherit; overflow: hidden; }
+.file-input-overlay { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.file-drop:hover, .file-drop.drag-active { border-color: var(--accent); background: #f2f8f4; }
+.file-drop:focus-within { outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent); outline-offset: 2px; }
 .file-drop svg { color: var(--accent); }
 .file-drop strong { color: var(--text); font-size: 14px; }
 .file-drop span { font-size: 11px; }
-.file-drop input { width: min(420px, 100%); margin-top: 14px; font-size: 12px; }
+.selected-upload { min-height: 54px; padding: 7px 8px 7px 12px; display: grid; grid-template-columns: 22px minmax(0, 1fr) 36px; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.selected-upload > svg { color: var(--accent); }
+.selected-upload span { min-width: 0; display: grid; gap: 2px; }
+.selected-upload strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.selected-upload small { color: var(--muted); font-size: 10px; }
+.selected-upload .button-icon { width: 36px; height: 36px; color: var(--muted); }
 .form-command-row, .review-command-row { display: flex; justify-content: flex-end; gap: 8px; }
 .ingestion-status { min-height: 180px; padding: 28px; display: flex; align-items: flex-start; gap: 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
 .ingestion-status svg { flex: 0 0 auto; color: var(--accent); }
@@ -289,11 +297,36 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .active-share-list strong, .active-share-list small { display: block; }
 .active-share-list strong { font-size: 12px; }
 .active-share-list small { margin-top: 3px; color: var(--muted); font-size: 10px; }
-.settings-list { max-width: 760px; border-top: 1px solid var(--border); }
-.settings-list section { min-height: 78px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid var(--border); }
-.settings-list section > svg { color: var(--accent); }
-.settings-list h2 { margin-bottom: 4px; font-size: 15px; }
-.settings-list p { margin: 0; color: var(--muted); font-size: 13px; }
+.household-section { max-width: 760px; }
+.household-switcher { max-width: 430px; margin: 14px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.household-switcher label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.household-member-list { border-top: 1px solid var(--border); }
+.household-member-row { min-height: 68px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 11px; border-bottom: 1px solid var(--border); }
+.member-avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: white; background: #344a3f; font-size: 11px; font-weight: 800; }
+.household-member-row strong, .household-member-row small { display: block; }
+.household-member-row strong { font-size: 13px; }
+.household-member-row small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.member-meta { text-align: right; }
+.member-meta span { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 11px; font-weight: 700; }
+.member-meta small { text-transform: capitalize; }
+.household-invite-form { margin-top: 18px; display: grid; grid-template-columns: minmax(220px, 1.5fr) minmax(140px, 0.8fr) auto; align-items: end; gap: 8px; }
+.household-invite-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.household-feedback { margin-top: 10px; }
+.invite-link-capture { margin-top: 10px; padding: 12px; border: 1px solid #bad9ca; border-radius: 6px; background: #edf8f2; }
+.invite-link-capture strong, .invite-link-capture a, .invite-link-capture small { display: block; }
+.invite-link-capture strong { font-size: 12px; }
+.invite-link-capture a { margin-top: 5px; overflow-wrap: anywhere; color: var(--accent-strong); font-size: 11px; text-decoration: underline; }
+.invite-link-capture small { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.pending-invitations { margin-top: 24px; border-top: 1px solid var(--border); }
+.pending-invitations h3 { margin: 0; padding: 14px 0 8px; font-size: 12px; }
+.pending-invitation-row { min-height: 58px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 40px; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+.pending-invitation-row > svg { color: var(--accent); }
+.pending-invitation-row strong, .pending-invitation-row small { display: block; }
+.pending-invitation-row strong { font-size: 12px; }
+.pending-invitation-row small { margin-top: 3px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
+.pending-invitation-row > span { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
+.pending-invitation-row > span.invite-expired { color: var(--danger); }
+.household-permission-note { margin: 14px 0 0; color: var(--muted); font-size: 12px; }
 .measurement-section { max-width: 760px; margin-top: 34px; }
 .measurement-form { margin-top: 15px; }
 .measurement-options { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
@@ -355,6 +388,25 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .spin { animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.invite-page { width: min(680px, 100%); min-height: 100vh; margin: 0 auto; padding: 0 22px 48px; background: var(--surface); }
+.invite-brand { height: 78px; display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.invite-brand .brand { padding: 0; }
+.invite-panel { width: min(460px, 100%); margin: 58px auto 0; }
+.invite-panel h1 { margin-bottom: 13px; font-size: 32px; line-height: 1.12; }
+.invite-panel > p:not(.eyebrow) { color: var(--muted); line-height: 1.55; }
+.invite-details { margin: 23px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.invite-details div { padding: 13px 0; }
+.invite-details div + div { padding-left: 18px; border-left: 1px solid var(--border); }
+.invite-details dt { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.invite-details dd { margin: 4px 0 0; font-size: 13px; font-weight: 700; text-transform: capitalize; }
+.invite-form { display: grid; gap: 13px; }
+.invite-form label { display: grid; gap: 6px; font-size: 11px; font-weight: 700; }
+.invite-form > p { margin-bottom: 3px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.invite-state { padding: 16px 0; display: grid; gap: 12px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.invite-state p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.invite-state .button { justify-self: start; }
+.invite-panel > small { display: block; margin-top: 20px; color: var(--muted); font-size: 10px; }
+
 .shared-loading { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f5f6f3; text-align: center; }
 .shared-loading > div { max-width: 420px; display: grid; justify-items: center; gap: 13px; }
 .shared-loading h1 { margin: 4px 0 0; font-size: 24px; }
@@ -403,6 +455,10 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
   .auth-brand-panel > small { display: none; }
   .auth-brand { padding-bottom: 0; }
   .auth-form-panel { padding: 35px 20px; }
+  .invite-page { padding: 0 18px 36px; }
+  .invite-brand { height: 68px; }
+  .invite-panel { margin-top: 35px; }
+  .invite-panel h1 { font-size: 27px; }
   .app-frame { display: block; padding-bottom: 65px; }
   .sidebar { display: none; }
   .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; min-height: 62px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--border); background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); }
@@ -417,6 +473,7 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
   .plan-copy { align-items: stretch; flex-direction: column; gap: 12px; }
   .plan-copy form .button { width: 100%; }
   .measurement-options { grid-template-columns: 1fr; }
+  .household-invite-form { grid-template-columns: 1fr; }
   .measurement-options label + label { border-left: 0; border-top: 1px solid var(--border); }
   .meal-slot-actions { align-items: stretch; flex-direction: column; padding-top: 12px; }
   .meal-slot-actions > div { justify-content: space-between; }

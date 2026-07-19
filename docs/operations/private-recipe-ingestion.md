@@ -16,9 +16,10 @@ meal plan references it.
 
 ## Runtime Paths
 
-- `RECIPE_EXTRACTION_MODE=local`: pasted text and text files use
-  `extractRecipeFromText`; binary jobs fail safely with `cloud_ai_required`.
-- `RECIPE_EXTRACTION_MODE=openrouter`: the named `RecipeIngestionAgent` starts
+- `RECIPE_EXTRACTION_PROVIDER=local`: pasted text and text files use
+  `extractRecipeFromText`; image/document uploads are rejected before a job or
+  artifact is created.
+- `RECIPE_EXTRACTION_PROVIDER=openrouter`: the named `RecipeIngestionAgent` starts
   `RecipeIngestionWorkflow`. The workflow reads the owned R2 object, uses
   Workers AI `toMarkdown` only to convert PDF/DOCX/ODT sources, and sends text
   or a private image directly to the operation's OpenRouter model chain. The
@@ -29,15 +30,15 @@ meal plan references it.
 
 ## OpenRouter Configuration
 
-OpenRouter is used through its OpenAI-compatible Chat Completions endpoint. No
-provider SDK is installed. Select models with environment variables:
+OpenRouter is called through the official `@openrouter/sdk` TypeScript client
+and its Chat Completions API. Select models with environment variables:
 
 ```dotenv
-RECIPE_EXTRACTION_MODE=openrouter
-RECIPE_TEXT_EXTRACTION_MODEL=~openai/gpt-latest
-RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS=anthropic/claude-sonnet-4
-RECIPE_VISION_EXTRACTION_MODEL=google/gemini-2.5-flash
-RECIPE_VISION_EXTRACTION_FALLBACK_MODELS=openai/gpt-4.1-mini
+RECIPE_EXTRACTION_PROVIDER=openrouter
+OPENROUTER_TEXT_MODEL=~openai/gpt-latest
+OPENROUTER_TEXT_FALLBACK_MODELS=anthropic/claude-sonnet-4
+OPENROUTER_VISION_MODEL=google/gemini-2.5-flash
+OPENROUTER_VISION_FALLBACK_MODELS=openai/gpt-4.1-mini
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_APP_TITLE=Tableplan
 OPENROUTER_API_KEY=replace-with-a-secret
@@ -47,8 +48,8 @@ Model selection is based on the ingestion operation:
 
 | Operation | Inputs | Primary/fallback configuration |
 | --- | --- | --- |
-| Text extraction | Paste, TXT, Markdown, converted PDF/DOCX/ODT | `RECIPE_TEXT_EXTRACTION_MODEL`, `RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS` |
-| Vision extraction | JPEG, PNG, WebP | `RECIPE_VISION_EXTRACTION_MODEL`, `RECIPE_VISION_EXTRACTION_FALLBACK_MODELS` |
+| Text extraction | Paste, TXT, Markdown, converted PDF/DOCX/ODT | `OPENROUTER_TEXT_MODEL`, `OPENROUTER_TEXT_FALLBACK_MODELS` |
+| Vision extraction | JPEG, PNG, WebP | `OPENROUTER_VISION_MODEL`, `OPENROUTER_VISION_FALLBACK_MODELS` |
 
 Each optional comma-separated fallback list is tried in order and supports up
 to three distinct models. Images are sent as private base64 data URLs directly
@@ -64,9 +65,21 @@ Choose models that have a compatible structured-output and ZDR endpoint. The
 base URL is restricted to HTTPS OpenRouter hosts; use
 `https://eu.openrouter.ai/api/v1` when EU in-region processing is required.
 
-Keep `RECIPE_EXTRACTION_MODE=local` for credential-free local iteration. To
+Free model endpoints that log prompts or outputs are intentionally incompatible
+with this routing policy. OpenRouter may return HTTP 404 when a model slug exists
+but no endpoint satisfies `dataCollection=deny`, `zdr=true`, image input, and
+strict structured output together. Select a privacy-compatible paid endpoint or
+add a compatible model to the operation's fallback chain; do not relax the
+private-recipe data policy to make a free endpoint eligible.
+
+The SDK's own `debugLogger` and `OPENROUTER_DEBUG` options must remain disabled:
+the SDK documentation warns that request debug output can include authorization
+headers. Tableplan's `[tableplan]` logger records only bounded operational
+metadata.
+
+Keep `RECIPE_EXTRACTION_PROVIDER=local` for credential-free local iteration. To
 exercise the cloud workflow locally, put the key in uncommitted `.dev.vars`,
-set the mode to `openrouter`, and use real or remote Cloudflare bindings for the
+set the provider to `openrouter`, and use real or remote Cloudflare bindings for the
 Agent, Workflow, R2, and document `toMarkdown` conversion.
 
 References:
@@ -112,3 +125,10 @@ A failed workflow can be diagnosed from the job error fields and Worker logs.
 It cannot leave a partially searchable recipe because recipe creation happens
 only during publish. Source retention/deletion automation remains an operations
 task; delete R2 artifacts and job rows together under the same ownership policy.
+
+With `LOG_LEVEL=DEBUG`, the console traces the ingestion using `[tableplan]`
+events from `recipe-ingestion-request`, `recipe-ingestion-agent`, and
+`recipe-ingestion-workflow`. Search by the ingestion ID to correlate dispatch,
+Workflow progress, source loading/conversion, OpenRouter model resolution,
+ingredient mapping, and completion or failure. Logs contain operational metadata
+and result counts, not recipe text, uploaded bytes, account IDs, or API keys.

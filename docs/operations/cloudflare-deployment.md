@@ -37,6 +37,9 @@ example sender and application URLs in `wrangler.jsonc`. Verify the sender
 domain in Email Service and publish SPF, DKIM, and DMARC before enabling
 `EMAIL_MODE=cloud`. `PUBLIC_APP_URL` must be the fixed public origin; emailed
 links must never be derived from a request Host header.
+Household invitations share this Queue and Email binding and require arbitrary
+recipient delivery. Their account-setup URLs also use the fixed
+`PUBLIC_APP_URL`.
 
 ## Secrets
 
@@ -53,14 +56,21 @@ Repeat for production. Use distinct values. Never put `OPENROUTER_API_KEY` in
 `wrangler.jsonc`. `BETTER_AUTH_URL`, `APP_ENV`, the selected OpenRouter model,
 and other non-secret feature configuration may be Wrangler variables.
 
-Before deployment, set `RECIPE_TEXT_EXTRACTION_MODEL` and
-`RECIPE_VISION_EXTRACTION_MODEL` to appropriate OpenRouter model IDs. Each has
+Before deployment, set `OPENROUTER_TEXT_MODEL` and
+`OPENROUTER_VISION_MODEL` to appropriate OpenRouter model IDs. Each has
 an optional comma-separated `*_FALLBACK_MODELS` chain of up to three IDs. The
 vision chain must accept image input; all selected endpoints must support strict
 JSON Schema and zero-data-retention routing. Keep
 `OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`, or use the official EU
 endpoint when required. See `docs/operations/private-recipe-ingestion.md` for
 the complete extraction configuration.
+
+Set the non-secret `LOG_LEVEL` Wrangler variable to `DEBUG`, `INFO`, or `ERROR`.
+The repository uses `DEBUG` locally and `INFO` in preview and production.
+Temporarily enabling `DEBUG` in a deployed environment provides detailed Agent
+and Workflow lifecycle events, but should be returned to `INFO` after diagnosis
+to control log volume. Tableplan never intentionally logs private recipe source
+contents or provider credentials.
 
 ## Migrate and Deploy Preview
 
@@ -74,6 +84,8 @@ After deployment:
 
 - Verify `/api/v1/health`.
 - Complete Google and first-party sign-in tests.
+- Invite a new household email, complete password setup from the delivered
+  single-use link, and verify the account joins the inviter's plans and lists.
 - Search and open a known imported recipe.
 - Create a meal plan and generate a shopping list.
 - Download all four export variants and inspect A4 and Letter output.

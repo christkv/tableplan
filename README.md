@@ -22,9 +22,9 @@ npm run import:sample
 npm run dev
 ```
 
-Open `http://localhost:5173`, create a local account, and sign in. The sample
-import scans the source file to select a deterministic 5,000-row sample, so its
-first run takes several minutes.
+Open the local URL printed by `npm run dev`, create a local account, and sign in.
+The sample import scans the source file to select a deterministic 5,000-row
+sample, so its first run takes several minutes.
 
 Run the complete local quality gate with:
 
@@ -38,10 +38,13 @@ npm run check
 - [Local development](docs/operations/local-development.md)
 - [Recipe import](docs/operations/recipe-import.md)
 - [Private recipe ingestion](docs/operations/private-recipe-ingestion.md)
+- [Household accounts](docs/operations/household-accounts.md)
 - [API and assistant integrations](docs/operations/api-and-integrations.md)
 - [Cloudflare deployment](docs/operations/cloudflare-deployment.md)
 - [Phase documents](docs/phases/README.md)
 
 The OpenAPI 3.1 document is served by a running instance at
 `/api/v1/openapi.json`. Repository Agent Skills live under `src/skills/` and do
-not contain credentials.
+not contain production credentials. The documented local-only test account is
+created with `npm run seed:test-user`; see
+`docs/operations/local-development.md`.

@@ -6,7 +6,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 
 ## Planning Decisions
 
-- The canonical roadmap has 15 phases numbered 0 through 14.
+- The canonical roadmap has 16 phases numbered 0 through 15.
 - Local development and Cloudflare deployment use the same application and domain services; only service bindings differ.
 - Phase 2 imports a deterministic sample for product development. The full 500,471-row production import is delayed until Phase 11, after schema and search contracts are stable.
 - Favorites are included in Phase 3 so the first recipe experience supports discovery, drill-down, and saving.
@@ -34,6 +34,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 | 12 | [Hardening and Operations](phase-12-hardening-operations.md) | Operational, security, and recovery readiness | Phase 11 |
 | 13 | [Private Recipe Ingestion](phase-13-private-recipe-ingestion.md) | Reviewed text/file/image extraction into private recipes | Phases 3-7; OpenRouter, Cloudflare AI, R2, Agents, and Workflows |
 | 14 | [PDF, Email, and Public Checklists](phase-14-pdf-email-public-checklists.md) | Printable exports and a secure login-free store checklist | Phases 4-6; Browser Rendering, Email Service, and Queues |
+| 15 | [Household Accounts and Invitations](phase-15-household-accounts.md) | Shared household membership with secure account invitations | Phases 1, 5, and 14 |
 
 ## Cross-Phase Rules
 
@@ -56,6 +57,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 | Nutrition enrichment | Phase 11 scope freeze | Post-MVP; preserve schema extension points only |
 | Private recipe default visibility | Phase 13 schema migration | User-private; require explicit household sharing before shared planning |
 | Public shopping-link lifetime | Phase 14 capability migration | 14 days, user-selectable from 3, 7, 14, or 30 days, with immediate revocation |
+| Household invitation lifetime | Phase 15 invitation migration | 7 days, single-use, with owner revocation and replacement on reinvite |
 
 ## Release Gates
 

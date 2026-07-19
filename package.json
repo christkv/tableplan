@@ -17,6 +17,7 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:preview": "wrangler d1 migrations apply DB --env preview --remote",
     "db:migrate:production": "wrangler d1 migrations apply DB --env production --remote",
+    "seed:test-user": "tsx scripts/seed-local-test-user.ts",
     "import": "tsx scripts/import-recipes.ts",
     "import:sample": "tsx scripts/import-recipes.ts sample data/recipes_ingredients.csv --rows 5000 --out .import/sample.sqlite --apply-local",
     "deploy:preview": "npm run build && wrangler deploy --env preview",
@@ -26,6 +27,7 @@
   "dependencies": {
     "@base-ui/react": "latest",
     "@modelcontextprotocol/sdk": "latest",
+    "@openrouter/sdk": "^0.13.66",
     "agents": "^0.17.4",
     "better-auth": "latest",
     "class-variance-authority": "latest",

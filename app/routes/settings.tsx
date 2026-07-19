@@ -1,15 +1,17 @@
-import { ArrowDown, ArrowUp, Check, KeyRound, Plus, Ruler, Trash2, UtensilsCrossed, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Clock3, KeyRound, Mail, Plus, Ruler, ShieldCheck, Trash2, UserPlus, UtensilsCrossed, Users } from "lucide-react";
 import { useState } from "react";
 import { Form, redirect } from "react-router";
 
 import type { Route } from "./+types/settings";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Select } from "~/components/ui/select";
 import { cloudflareContext } from "../context";
 import { createApiKey, listApiKeys, revokeApiKey, type ApiScope } from "../../src/auth/api-keys";
 import { requireRequestSession } from "../../src/auth/server";
 import { getMealPlanSlots, getMeasurementSystem, updateMealPlanSlots, updateMeasurementSystem } from "../../src/db/preferences";
 import { maximumMealSlots, type MealSlotDefinition } from "../../src/domain/planning/slots";
+import { createHouseholdInvitation, getHouseholdMembers, HouseholdInvitationError, revokeHouseholdInvitation, switchDefaultHousehold } from "../../src/households/invitations";
 
 const defaultScopes: ApiScope[] = ["recipes:read", "recipes:write", "plans:read", "plans:write", "shopping:read", "shopping:write"];
 
@@ -17,18 +19,70 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const url = new URL(request.url);
-  const [keys, measurementSystem, mealSlots] = await Promise.all([
+  const [keys, measurementSystem, mealSlots, household] = await Promise.all([
     listApiKeys(env.DB, session.user.id),
     getMeasurementSystem(env.DB, session.user.id, session.householdId),
     getMealPlanSlots(env.DB, session.householdId),
+    getHouseholdMembers(env.DB, session.householdId, session.user.id),
   ]);
-  return { keys, measurementSystem, mealSlots, settingsSaved: url.searchParams.get("saved") };
+  return { keys, measurementSystem, mealSlots, household, settingsSaved: url.searchParams.get("saved") };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const data = await request.formData();
+  if (data.get("intent") === "switch-household") {
+    try {
+      await switchDefaultHousehold(env.DB, session.user.id, String(data.get("householdId") ?? ""));
+      return redirect("/settings?saved=household-switched");
+    } catch (error) {
+      return {
+        createdKey: null,
+        householdError: error instanceof HouseholdInvitationError ? error.message : "The household could not be selected.",
+        householdMessage: null,
+        invitationUrl: null,
+      };
+    }
+  }
+  if (data.get("intent") === "invite-member") {
+    try {
+      const invitation = await createHouseholdInvitation(env, {
+        householdId: session.householdId,
+        invitedByUserId: session.user.id,
+        email: data.get("email"),
+        relationship: data.get("relationship"),
+        role: data.get("role"),
+        localBaseUrl: new URL(request.url).origin,
+      });
+      return {
+        createdKey: null,
+        householdError: null,
+        householdMessage: env.EMAIL_MODE === "cloud" ? `Invitation queued for ${invitation.email}.` : `Invitation captured locally for ${invitation.email}.`,
+        invitationUrl: env.EMAIL_MODE === "cloud" ? null : invitation.invitationUrl,
+      };
+    } catch (error) {
+      return {
+        createdKey: null,
+        householdError: error instanceof HouseholdInvitationError ? error.message : "The invitation could not be sent.",
+        householdMessage: null,
+        invitationUrl: null,
+      };
+    }
+  }
+  if (data.get("intent") === "revoke-invitation") {
+    try {
+      await revokeHouseholdInvitation(env.DB, session.householdId, session.user.id, String(data.get("invitationId") ?? ""));
+      return redirect("/settings?saved=invitation-revoked");
+    } catch (error) {
+      return {
+        createdKey: null,
+        householdError: error instanceof HouseholdInvitationError ? error.message : "The invitation could not be revoked.",
+        householdMessage: null,
+        invitationUrl: null,
+      };
+    }
+  }
   if (data.get("intent") === "measurement") {
     await updateMeasurementSystem(env.DB, session.user.id, session.householdId, data.get("measurementSystem"));
     return redirect("/settings?saved=measurements");
@@ -78,9 +132,36 @@ function MealSlotEditor({ initialSlots, saved, error }: { initialSlots: MealSlot
 }
 
 export default function Settings({ loaderData, actionData }: Route.ComponentProps) {
+  const householdAction = actionData && "householdError" in actionData ? actionData : null;
   return (
     <div className="page-shell"><header className="page-header"><div><p className="eyebrow">Household</p><h1>Settings</h1><p className="page-subtitle">Manage family defaults and external access.</p></div></header>
-      <div className="settings-list"><section><Users size={20} /><div><h2>Family members</h2><p>Owner household; invitations arrive in a later checkpoint.</p></div></section></div>
+      <section className="household-section" aria-labelledby="household-heading">
+        <div className="section-heading"><div><p className="eyebrow">{loaderData.household.household.name}</p><h2 id="household-heading">Household members</h2></div><Users size={20} /></div>
+        {loaderData.household.availableHouseholds.length > 1 ? <Form method="post" className="household-switcher"><label>Active household<Select name="householdId" defaultValue={loaderData.household.household.id}>{loaderData.household.availableHouseholds.map((household) => <option key={household.id} value={household.id}>{household.name}</option>)}</Select></label><Button name="intent" value="switch-household" type="submit" variant="secondary">Switch</Button></Form> : null}
+        <div className="household-member-list">
+          {loaderData.household.members.map((member) => <div className="household-member-row" key={member.userId}>
+            <div className="member-avatar" aria-hidden="true">{member.name.slice(0, 1).toUpperCase()}</div>
+            <div><strong>{member.name}</strong><small>{member.email}</small></div>
+            <div className="member-meta"><span>{member.role === "owner" ? <><ShieldCheck size={14} /> Owner</> : "Household member"}</span><small>{member.relationship === "other" && member.role === "owner" ? "Household creator" : member.relationship}</small></div>
+          </div>)}
+        </div>
+        {loaderData.household.currentRole === "owner" ? <>
+          <Form method="post" className="household-invite-form">
+            <div><label>Email<Input name="email" type="email" required autoComplete="email" placeholder="person@example.com" /></label></div>
+            <div><label>Relationship<Select name="relationship" defaultValue="spouse"><option value="spouse">Spouse or partner</option><option value="child">Child</option><option value="flatmate">Flatmate</option><option value="other">Other</option></Select></label></div>
+            <input type="hidden" name="role" value="adult" />
+            <Button name="intent" value="invite-member" type="submit"><UserPlus size={16} /> Send invite</Button>
+          </Form>
+          {householdAction?.householdError ? <p className="form-error household-feedback" role="alert">{householdAction.householdError}</p> : null}
+          {householdAction?.householdMessage ? <p className="settings-saved household-feedback" role="status"><Check size={15} /> {householdAction.householdMessage}</p> : null}
+          {householdAction?.invitationUrl ? <div className="invite-link-capture"><strong>Local invitation link</strong><a href={householdAction.invitationUrl}>{householdAction.invitationUrl}</a><small>Capture mode only. This single-use link contains a private credential.</small></div> : null}
+          {loaderData.household.invitations.length ? <div className="pending-invitations"><h3>Pending invitations</h3>{loaderData.household.invitations.map((invitation) => <div className="pending-invitation-row" key={invitation.id}>
+            <Mail size={17} /><div><strong>{invitation.email}</strong><small>{invitation.relationship} · Household member</small></div>
+            <span className={invitation.expired ? "invite-expired" : ""}><Clock3 size={13} /> {invitation.expired ? "Expired" : invitation.deliveryStatus}</span>
+            <Form method="post"><input type="hidden" name="invitationId" value={invitation.id} /><Button name="intent" value="revoke-invitation" variant="ghost" size="icon" aria-label={`Revoke invitation for ${invitation.email}`} title="Revoke invitation"><Trash2 size={16} /></Button></Form>
+          </div>)}</div> : null}
+        </> : <p className="household-permission-note">Only the household owner can invite new members.</p>}
+      </section>
       <section className="measurement-section" aria-labelledby="measurement-heading">
         <div className="section-heading"><div><p className="eyebrow">Recipe and shopping display</p><h2 id="measurement-heading">Measurements</h2></div><Ruler size={20} /></div>
         <Form method="post" className="measurement-form">

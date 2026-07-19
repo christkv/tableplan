@@ -1,12 +1,15 @@
 import { ChefHat, Globe, LoaderCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { authClient } from "~/lib/auth-client";
 
 export default function SignIn() {
+  const [searchParams] = useSearchParams();
+  const requestedReturnTo = searchParams.get("returnTo");
+  const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//") ? requestedReturnTo : "/recipes";
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +31,7 @@ export default function SignIn() {
           ? await authClient.signIn.email({ email: identity, password })
           : await authClient.signIn.username({ username: identity, password });
       if (result.error) setError(result.error.message ?? "Authentication failed");
-      else window.location.assign("/recipes");
+      else window.location.assign(returnTo);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Authentication failed");
     } finally {
@@ -38,7 +41,7 @@ export default function SignIn() {
 
   async function signInWithGoogle() {
     setPending(true); setError(null);
-    const result = await authClient.signIn.social({ provider: "google", callbackURL: "/recipes" });
+    const result = await authClient.signIn.social({ provider: "google", callbackURL: returnTo });
     if (result?.error) { setError(result.error.message ?? "Google sign-in failed"); setPending(false); }
   }
 

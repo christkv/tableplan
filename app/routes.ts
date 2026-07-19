@@ -3,6 +3,7 @@ import { index, layout, route, type RouteConfig } from "@react-router/dev/routes
 export default [
   index("routes/index.tsx"),
   route("sign-in", "routes/sign-in.tsx"),
+  route("household/join", "routes/household-join.tsx"),
   route("shared/shopping", "routes/shared-shopping-exchange.tsx"),
   route("shared/shopping/:shareId", "routes/shared-shopping.tsx"),
   layout("routes/app-layout.tsx", [
@@ -40,6 +41,7 @@ export default [
   route("api/public/shopping/:shareId", "routes/api.public.shopping.ts"),
   route("api/public/shopping/:shareId/items/:itemId", "routes/api.public.shopping.item.ts"),
   route("api/public/shopping/logout", "routes/api.public.shopping.logout.ts"),
+  route("api/public/household-invitations/exchange", "routes/api.public.household-invitation.exchange.ts"),
   route("api/v1/openapi.json", "routes/api.openapi.ts"),
   route("api/auth/*", "routes/api.auth.ts"),
   route("mcp", "routes/mcp.ts"),
