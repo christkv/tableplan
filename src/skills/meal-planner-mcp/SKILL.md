@@ -22,6 +22,8 @@ Use the connected MCP tools for conversational meal planning. Read
 7. Re-read the plan when multiple changes have been made.
 8. Call `generate_shopping_list` once the week is final, then
    `get_shopping_list` to present the combined result.
+9. Use `email_shopping_list` or `create_shopping_list_link` only when the user
+   explicitly asks to send or share the list.
 
 ## Tool Discipline
 
@@ -53,6 +55,7 @@ Use the connected MCP tools for conversational meal planning. Read
 
 `import_recipe_text`, `publish_recipe_import`, `save_recipe_search`,
 `delete_saved_search`, `add_recipe_to_plan`, `update_meal_plan_servings`,
-`copy_previous_meal_plan`, and `generate_shopping_list` write user or household data. Confirm
+`copy_previous_meal_plan`, `generate_shopping_list`, `create_shopping_list_link`,
+`revoke_shopping_list_link`, and `email_shopping_list` write user or household data. Confirm
 when the user has not already supplied the complete action. Generating a new
 shopping list creates a snapshot; it does not silently modify the meal plan.

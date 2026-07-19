@@ -14,6 +14,11 @@ export interface ShoppingListView {
   plan: ShoppingListPlanView | null; items: ShoppingItemView[];
 }
 
+interface ShoppingListRow {
+  id: string; name: string; measurement_system: MeasurementSystem; created_at: string; updated_at: string;
+  meal_plan_id: string | null; starts_on: string | null; ends_on: string | null; plan_name: string | null; meal_count: number;
+}
+
 async function aggregatePlanIngredients(db: D1Database, input: { householdId: string; planId: string; startsOn: string; endsOn: string }): Promise<AggregatedIngredient[]> {
   const rows = await db.prepare(`
     SELECT mpi.id plan_item_id, mpi.recipe_id, r.name recipe_name, r.servings recipe_servings, mpi.servings planned_servings,
@@ -93,11 +98,33 @@ export async function getLatestShoppingList(db: D1Database, householdId: string,
       sl.meal_plan_id, sl.starts_on, sl.ends_on, mp.name AS plan_name,
       (SELECT COUNT(*) FROM meal_plan_items mpi WHERE mpi.meal_plan_id=sl.meal_plan_id) AS meal_count
     FROM shopping_lists sl LEFT JOIN meal_plans mp ON mp.id=sl.meal_plan_id
-    WHERE sl.household_id=? ORDER BY sl.created_at DESC LIMIT 1`).bind(householdId).first<{
-      id: string; name: string; measurement_system: MeasurementSystem; created_at: string; updated_at: string;
-      meal_plan_id: string | null; starts_on: string | null; ends_on: string | null; plan_name: string | null; meal_count: number;
-    }>();
+    WHERE sl.household_id=? ORDER BY sl.created_at DESC LIMIT 1`).bind(householdId).first<ShoppingListRow>();
   if (!list) return null;
+  return getShoppingListItems(db, list, displaySystem);
+}
+
+export async function getShoppingListById(db: D1Database, householdId: string, listId: string, displaySystem?: MeasurementSystem): Promise<ShoppingListView | null> {
+  const list = await db.prepare(`SELECT sl.id, sl.name, sl.measurement_system, sl.created_at, sl.updated_at,
+      sl.meal_plan_id, sl.starts_on, sl.ends_on, mp.name AS plan_name,
+      (SELECT COUNT(*) FROM meal_plan_items mpi WHERE mpi.meal_plan_id=sl.meal_plan_id) AS meal_count
+    FROM shopping_lists sl LEFT JOIN meal_plans mp ON mp.id=sl.meal_plan_id
+    WHERE sl.id=? AND sl.household_id=?`).bind(listId, householdId).first<ShoppingListRow>();
+  if (!list) return null;
+  return getShoppingListItems(db, list, displaySystem);
+}
+
+export async function getShoppingListForPlan(db: D1Database, householdId: string, planId: string, listId?: string, displaySystem?: MeasurementSystem): Promise<ShoppingListView | null> {
+  const list = await db.prepare(`SELECT sl.id, sl.name, sl.measurement_system, sl.created_at, sl.updated_at,
+      sl.meal_plan_id, sl.starts_on, sl.ends_on, mp.name AS plan_name,
+      (SELECT COUNT(*) FROM meal_plan_items mpi WHERE mpi.meal_plan_id=sl.meal_plan_id) AS meal_count
+    FROM shopping_lists sl JOIN meal_plans mp ON mp.id=sl.meal_plan_id
+    WHERE sl.household_id=? AND sl.meal_plan_id=? AND (? IS NULL OR sl.id=?)
+    ORDER BY sl.created_at DESC LIMIT 1`).bind(householdId, planId, listId ?? null, listId ?? null).first<ShoppingListRow>();
+  if (!list) return null;
+  return getShoppingListItems(db, list, displaySystem);
+}
+
+async function getShoppingListItems(db: D1Database, list: ShoppingListRow, displaySystem?: MeasurementSystem): Promise<ShoppingListView> {
   const rows = await db.prepare("SELECT id, display_name, quantity_min, quantity_max, base_unit_id, checked, unresolved, source_json FROM shopping_list_items WHERE shopping_list_id = ? ORDER BY checked, position").bind(list.id).all<{
     id: string; display_name: string; quantity_min: string | null; quantity_max: string | null; base_unit_id: string | null; checked: number; unresolved: number; source_json: string;
   }>();
@@ -123,5 +150,7 @@ export async function getLatestShoppingList(db: D1Database, householdId: string,
 }
 
 export async function toggleShoppingItem(db: D1Database, householdId: string, itemId: string, checked: boolean) {
-  await db.prepare("UPDATE shopping_list_items SET checked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE household_id = ?)").bind(checked ? 1 : 0, itemId, householdId).run();
+  const result = await db.prepare("UPDATE shopping_list_items SET checked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE household_id = ?)").bind(checked ? 1 : 0, itemId, householdId).run();
+  if (result.meta.changes) await db.prepare("UPDATE shopping_lists SET updated_at=CURRENT_TIMESTAMP WHERE id=(SELECT shopping_list_id FROM shopping_list_items WHERE id=?)").bind(itemId).run();
+  return Boolean(result.meta.changes);
 }

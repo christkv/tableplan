@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 This is the restart ledger for Tableplan. Update it after every verified
 checkpoint. A phase is complete only when its acceptance criteria are met; an
@@ -18,7 +18,7 @@ OAuth have been verified.
   end-to-end implementation and relevance measurement. FTS remains the active,
   required fallback.
 - **Next local task:** Fresh desktop/mobile screenshot and accessibility pass
-  for Phase 13; Phase 10 embedding fixtures remain independently ready.
+  for Phases 13-14; Phase 10 embedding fixtures remain independently ready.
 - **Next external task:** Provision preview D1, Workers AI, and Vectorize;
   replace placeholder IDs/URLs in `wrangler.jsonc`.
 
@@ -45,6 +45,8 @@ OAuth have been verified.
   and structured results.
 - Credential-free REST, MCP, and import-administration Agent Skills under
   `src/skills/`.
+- Serving-aware recipe/plan/shopping/combined print exports, account-email
+  delivery, and expiring login-free store checklists.
 - Run, import, API/integration, deployment, architecture, and per-phase
   documentation.
 
@@ -65,12 +67,22 @@ OAuth have been verified.
 | 10. Vector/hybrid search | Not implemented | Needs preview AI/Vectorize bindings, embedding pipeline, ranking, and relevance evaluation |
 | 11. Full import/production | Not started | Needs provenance/capacity approval, clean full staging, preview rehearsal, and cloud credentials |
 | 12. Hardening/operations | Partial | Operations docs and local quality gate exist; rate limiting, audit events, CI/CD, load/accessibility/browser QA remain |
-| 13. Private recipe ingestion | Implemented locally | Ownership migration, local text path, R2 artifacts, AgentWorkflow/Workers AI cloud path, review/mapping, edit/share, REST/MCP, and cross-account isolation pass; cloud binary extraction and fresh browser screenshots remain |
+| 13. Private recipe ingestion | Implemented locally | Ownership migration, local text path, R2 artifacts, AgentWorkflow with separate OpenRouter text/vision model chains and Workers AI document conversion, review/mapping, edit/share, REST/MCP, and cross-account isolation pass; live cloud extraction and fresh browser screenshots remain |
+| 14. PDF/email/public checklists | Implemented locally | Four local print previews, hashed/revocable capability links, mobile checklist, account-email capture, Queue/Email/Browser bindings, REST/MCP, and tests implemented; preview PDF rendering and real email delivery remain |
 
 ## Verification Log
 
 | Date | Verification | Result |
 | --- | --- | --- |
+| 2026-07-19 | Operation-specific OpenRouter models | Split recipe processing into configurable text/document and vision primary/fallback chains; JPEG/PNG/WebP now use direct private multimodal input while PDF/DOCX/ODT retain Workers AI document conversion before text extraction |
+| 2026-07-19 | Text/vision model quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 95 tests across 21 files, client build, and Worker build; live multimodal preview extraction remains pending a provisioned secret and cloud resources |
+| 2026-07-19 | OpenRouter extraction provider | Replaced provider-specific recipe inference with a direct OpenRouter adapter; added configurable primary/three-model fallback routing, strict JSON Schema, ZDR/no-data-collection routing, actual-model audit storage, official/EU endpoint validation, secrets/configuration documentation, and retained deterministic local extraction |
+| 2026-07-19 | OpenRouter quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 93 tests across 21 files, client build, and Worker build; live OpenRouter/preview extraction remains pending a provisioned secret and cloud resources |
+| 2026-07-17 | Phase 14 local migration | `0006_pdf_email_public_checklists.sql` applied to existing local D1 state successfully |
+| 2026-07-17 | Phase 14 end-to-end HTTP smoke | Created account/plan/list; verified four print previews, serving scaling, capability exchange, public read/toggle propagation, capture email status, hashed-token storage, revoke, and 410 after revoke |
+| 2026-07-17 | Phase 14 quality gate | `npm run check` passed: generated bindings/routes, TypeScript, 87 tests across 20 files, client build, and Worker build |
+| 2026-07-17 | Phase 14 implementation | Added migration, export renderers, four PDF/preview routes, public capability checklist, email capture/cloud Queue path, UI, REST/MCP contracts, tests, and operations documentation |
+| 2026-07-17 | PDF/email/public checklist plan | Added Phase 14 with four PDF exports, account-email delivery, revocable login-free checklist capabilities, Cloudflare bindings/Queues, security controls, tests, and rollout gates |
 | 2026-07-16 | `npm install` | Passed; dependency audit reported zero vulnerabilities at install time |
 | 2026-07-16 | `npm run db:migrate:local` | Passed; initial D1 migration applied |
 | 2026-07-16 | Corrected `npm run import:sample` | Staging passed; scanned 500,471 rows, imported 4,927 unique recipes, and rejected 73 duplicates |

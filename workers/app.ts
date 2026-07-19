@@ -1,6 +1,7 @@
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { cloudflareContext } from "../app/context";
+import { processShoppingEmail, type ShoppingEmailQueueMessage } from "../src/email/shopping-email";
 
 export { RecipeIngestionAgent, RecipeIngestionWorkflow } from "./recipe-ingestion";
 
@@ -15,4 +16,15 @@ export default {
     context.set(cloudflareContext, { env, ctx });
     return requestHandler(request, context);
   },
-} satisfies ExportedHandler<CloudflareEnvironment>;
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      try {
+        await processShoppingEmail(env, message.body);
+        message.ack();
+      } catch {
+        if (message.attempts < 3) message.retry({ delaySeconds: Math.min(300, 30 * message.attempts) });
+        else message.ack();
+      }
+    }
+  },
+} satisfies ExportedHandler<CloudflareEnvironment, ShoppingEmailQueueMessage>;

@@ -13,6 +13,7 @@ describe("OpenAPI document", () => {
       "/health",
       "/recipes/search",
       "/recipes/{recipeId}",
+      "/recipes/{recipeId}/pdf",
       "/recipe-ingestions",
       "/recipe-ingestions/{ingestionId}",
       "/saved-searches",
@@ -20,8 +21,15 @@ describe("OpenAPI document", () => {
       "/meal-plans",
       "/meal-plan-items/{itemId}",
       "/meal-plans/clone-previous",
+      "/meal-plans/{planId}/pdf",
+      "/meal-plans/{planId}/combined.pdf",
       "/shopping-lists/generate",
       "/shopping-lists/latest",
+      "/shopping-lists/{listId}/pdf",
+      "/shopping-lists/{listId}/shares",
+      "/shopping-lists/{listId}/shares/{shareId}",
+      "/shopping-lists/{listId}/email",
+      "/email-deliveries/{deliveryId}",
     ]);
     expect(document.paths["/meal-plans"].post.operationId).toBe("addRecipeToMealPlan");
     expect(document.paths["/meal-plan-items/{itemId}"].patch.operationId).toBe("updateMealPlanItemServings");
@@ -30,5 +38,7 @@ describe("OpenAPI document", () => {
     expect(document.paths["/recipe-ingestions"].post.operationId).toBe("createRecipeIngestion");
     expect(document.paths["/recipe-ingestions/{ingestionId}"].post.operationId).toBe("publishRecipeIngestion");
     expect(document.paths["/saved-searches"].post.operationId).toBe("saveRecipeSearch");
+    expect(document.paths["/shopping-lists/{listId}/email"].post.operationId).toBe("emailShoppingListToAccount");
+    expect(document.paths["/meal-plans/{planId}/combined.pdf"].get.operationId).toBe("downloadCombinedPlanPdf");
   });
 });

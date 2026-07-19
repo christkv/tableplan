@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarPlus, Check, Heart, LockKeyhole, Minus, Pencil, Plus, Scale, Users } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Check, FileDown, Heart, LockKeyhole, Minus, Pencil, Plus, Scale, Users } from "lucide-react";
 import { Form, Link, redirect } from "react-router";
 
 import type { Route } from "./+types/recipe-detail";
@@ -69,6 +69,7 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
         <div className="detail-actions">
+          <a className="button button-secondary button-default" target="_blank" rel="noreferrer" href={`/api/v1/recipes/${recipe.id}/pdf?servings=${selectedServings ?? recipe.servings ?? 4}&measurementSystem=${measurementSystem}`}><FileDown size={17} /> PDF</a>
           <Form method="post"><input type="hidden" name="favorite" value={favorite ? "false" : "true"} />{selectedServings === null ? null : <input type="hidden" name="servings" value={selectedServings} />}<PlanSelectionFields selection={planSelection} /><Button variant="secondary" size="icon" title={favorite ? "Remove favorite" : "Save favorite"} aria-label={favorite ? "Remove favorite" : "Save favorite"}><Heart size={18} fill={favorite ? "currentColor" : "none"} /></Button></Form>
           {recipe.isOwner ? <Link className="button button-secondary button-icon" title="Edit recipe" aria-label="Edit recipe" to={`/recipes/${recipe.id}/edit`}><Pencil size={17} /></Link> : null}
           {recipe.isOwner ? <Form method="post"><input type="hidden" name="visibility" value={recipe.visibility === "user_private" ? "household" : "user_private"} />{selectedServings === null ? null : <input type="hidden" name="servings" value={selectedServings} />}<PlanSelectionFields selection={planSelection} /><Button name="intent" value="visibility" variant="secondary">{recipe.visibility === "user_private" ? <Users size={17} /> : <LockKeyhole size={17} />}{recipe.visibility === "user_private" ? "Share" : "Make private"}</Button></Form> : null}

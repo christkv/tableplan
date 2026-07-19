@@ -9,10 +9,25 @@
   "vars": {
     "APP_ENV": "local",
     "BETTER_AUTH_URL": "http://localhost:5173",
+    "PUBLIC_APP_URL": "http://localhost:5173",
+    "PDF_MODE": "html-preview",
+    "EMAIL_MODE": "capture",
+    "EMAIL_FROM": "Tableplan <shopping@meal-planner.example.com>",
     "RECIPE_EXTRACTION_MODE": "local",
-    "RECIPE_EXTRACTION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
+    "RECIPE_TEXT_EXTRACTION_MODEL": "~openai/gpt-latest",
+    "RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS": "",
+    "RECIPE_VISION_EXTRACTION_MODEL": "google/gemini-2.5-flash",
+    "RECIPE_VISION_EXTRACTION_FALLBACK_MODELS": "",
+    "OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1",
+    "OPENROUTER_APP_TITLE": "Tableplan"
   },
   "ai": { "binding": "AI" },
+  "browser": { "binding": "BROWSER" },
+  "send_email": [{ "name": "EMAIL" }],
+  "queues": {
+    "producers": [{ "binding": "EMAIL_DELIVERY_QUEUE", "queue": "tableplan-email-local" }],
+    "consumers": [{ "queue": "tableplan-email-local", "max_batch_size": 5, "max_retries": 3, "dead_letter_queue": "tableplan-email-local-dlq" }]
+  },
   "r2_buckets": [
     { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-local" }
   ],
@@ -41,10 +56,25 @@
       "vars": {
         "APP_ENV": "preview",
         "BETTER_AUTH_URL": "https://meal-planner-preview.example.workers.dev",
-        "RECIPE_EXTRACTION_MODE": "cloud",
-        "RECIPE_EXTRACTION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
+        "PUBLIC_APP_URL": "https://meal-planner-preview.example.workers.dev",
+        "PDF_MODE": "cloud",
+        "EMAIL_MODE": "cloud",
+        "EMAIL_FROM": "Tableplan <shopping@meal-planner.example.com>",
+        "RECIPE_EXTRACTION_MODE": "openrouter",
+        "RECIPE_TEXT_EXTRACTION_MODEL": "~openai/gpt-latest",
+        "RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS": "",
+        "RECIPE_VISION_EXTRACTION_MODEL": "google/gemini-2.5-flash",
+        "RECIPE_VISION_EXTRACTION_FALLBACK_MODELS": "",
+        "OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1",
+        "OPENROUTER_APP_TITLE": "Tableplan"
       },
       "ai": { "binding": "AI" },
+      "browser": { "binding": "BROWSER" },
+      "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["shopping@meal-planner.example.com"] }],
+      "queues": {
+        "producers": [{ "binding": "EMAIL_DELIVERY_QUEUE", "queue": "tableplan-email-preview" }],
+        "consumers": [{ "queue": "tableplan-email-preview", "max_batch_size": 5, "max_retries": 3, "dead_letter_queue": "tableplan-email-preview-dlq" }]
+      },
       "r2_buckets": [
         { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-preview" }
       ],
@@ -70,10 +100,25 @@
       "vars": {
         "APP_ENV": "production",
         "BETTER_AUTH_URL": "https://meal-planner.example.com",
-        "RECIPE_EXTRACTION_MODE": "cloud",
-        "RECIPE_EXTRACTION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
+        "PUBLIC_APP_URL": "https://meal-planner.example.com",
+        "PDF_MODE": "cloud",
+        "EMAIL_MODE": "cloud",
+        "EMAIL_FROM": "Tableplan <shopping@meal-planner.example.com>",
+        "RECIPE_EXTRACTION_MODE": "openrouter",
+        "RECIPE_TEXT_EXTRACTION_MODEL": "~openai/gpt-latest",
+        "RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS": "",
+        "RECIPE_VISION_EXTRACTION_MODEL": "google/gemini-2.5-flash",
+        "RECIPE_VISION_EXTRACTION_FALLBACK_MODELS": "",
+        "OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1",
+        "OPENROUTER_APP_TITLE": "Tableplan"
       },
       "ai": { "binding": "AI" },
+      "browser": { "binding": "BROWSER" },
+      "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["shopping@meal-planner.example.com"] }],
+      "queues": {
+        "producers": [{ "binding": "EMAIL_DELIVERY_QUEUE", "queue": "tableplan-email-production" }],
+        "consumers": [{ "queue": "tableplan-email-production", "max_batch_size": 5, "max_retries": 3, "dead_letter_queue": "tableplan-email-production-dlq" }]
+      },
       "r2_buckets": [
         { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-production" }
       ],

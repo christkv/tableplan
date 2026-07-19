@@ -12,18 +12,30 @@ export interface MealPlanItemView {
 
 export interface MealPlanView {
   id: string;
+  name: string;
   startsOn: string;
   endsOn: string;
   items: MealPlanItemView[];
 }
 
 export async function getMealPlan(db: D1Database, householdId: string, startsOn: string, endsOn: string): Promise<MealPlanView | null> {
-  const plan = await db.prepare("SELECT id, starts_on, ends_on FROM meal_plans WHERE household_id = ? AND starts_on = ? AND ends_on = ? ORDER BY created_at DESC LIMIT 1")
-    .bind(householdId, startsOn, endsOn).first<{ id: string; starts_on: string; ends_on: string }>();
+  const plan = await db.prepare("SELECT id, name, starts_on, ends_on FROM meal_plans WHERE household_id = ? AND starts_on = ? AND ends_on = ? ORDER BY created_at DESC LIMIT 1")
+    .bind(householdId, startsOn, endsOn).first<{ id: string; name: string; starts_on: string; ends_on: string }>();
   if (!plan) return null;
+  return getMealPlanItems(db, plan);
+}
+
+export async function getMealPlanById(db: D1Database, householdId: string, planId: string): Promise<MealPlanView | null> {
+  const plan = await db.prepare("SELECT id, name, starts_on, ends_on FROM meal_plans WHERE id = ? AND household_id = ?")
+    .bind(planId, householdId).first<{ id: string; name: string; starts_on: string; ends_on: string }>();
+  if (!plan) return null;
+  return getMealPlanItems(db, plan);
+}
+
+async function getMealPlanItems(db: D1Database, plan: { id: string; name: string; starts_on: string; ends_on: string }): Promise<MealPlanView> {
   const items = await db.prepare(`SELECT mpi.id, mpi.recipe_id, r.name recipe_name, mpi.planned_date, mpi.meal_slot, mpi.servings, mpi.notes FROM meal_plan_items mpi JOIN recipes r ON r.id = mpi.recipe_id WHERE mpi.meal_plan_id = ? ORDER BY mpi.planned_date, mpi.meal_slot, mpi.created_at`)
     .bind(plan.id).all<{ id: string; recipe_id: string; recipe_name: string; planned_date: string; meal_slot: string; servings: string; notes: string | null }>();
-  return { id: plan.id, startsOn: plan.starts_on, endsOn: plan.ends_on, items: items.results.map((row) => ({ id: row.id, recipeId: row.recipe_id, recipeName: row.recipe_name, plannedDate: row.planned_date, mealSlot: row.meal_slot, servings: Number(row.servings), notes: row.notes })) };
+  return { id: plan.id, name: plan.name, startsOn: plan.starts_on, endsOn: plan.ends_on, items: items.results.map((row) => ({ id: row.id, recipeId: row.recipe_id, recipeName: row.recipe_name, plannedDate: row.planned_date, mealSlot: row.meal_slot, servings: Number(row.servings), notes: row.notes })) };
 }
 
 export async function ensureMealPlan(db: D1Database, input: { householdId: string; startsOn: string; endsOn: string; timezone: string; userId: string }) {

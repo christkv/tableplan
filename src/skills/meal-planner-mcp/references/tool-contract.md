@@ -18,6 +18,9 @@ Endpoint: `<origin>/mcp`, using Streamable HTTP and bearer authentication.
 | `copy_previous_meal_plan` | `targetWeek` | `plans:write` | Yes |
 | `generate_shopping_list` | `planId`, `week`, optional `measurementSystem` | `shopping:write` | Yes |
 | `get_shopping_list` | none | `shopping:read` | No |
+| `create_shopping_list_link` | `listId`, optional `expiresInDays` | `shopping:write` | Yes |
+| `revoke_shopping_list_link` | `listId`, `shareId` | `shopping:write` | Yes |
+| `email_shopping_list` | `listId`, optional `expiresInDays` | `shopping:write` | Yes, external delivery |
 
 Dates use `YYYY-MM-DD`. Recipe IDs must come from search or detail results.
 `planId` must come from a plan read or successful add operation. Tool results
@@ -33,6 +36,11 @@ use its adjusted quantities. Never multiply unresolved raw lines independently.
 Changing planned servings refreshes the linked shopping list under the same list
 ID and preserves checked items. Shopping-list results identify the source plan
 with its name, date range, and meal count.
+
+Login-free checklist links are bearer capabilities scoped to one list. Treat a
+returned URL as a secret, show it only where requested, and use
+`revoke_shopping_list_link` when access is no longer needed. Email always goes
+to the authenticated user's account email; no tool accepts another recipient.
 
 Recipe publication defaults to `user_private`. Never publish the extraction
 without review, and never select `household` visibility without explicit user

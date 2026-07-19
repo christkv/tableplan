@@ -25,7 +25,7 @@ only the required scopes.
 | `plans:read` | Weekly plan reads |
 | `plans:write` | Add recipes to a weekly plan |
 | `shopping:read` | Read the latest shopping-list snapshot |
-| `shopping:write` | Generate a shopping-list snapshot |
+| `shopping:write` | Generate, share, revoke, or email a shopping-list snapshot |
 | `household:read` | Reserved household profile access |
 | `admin:import` | Reserved import administration |
 
@@ -147,13 +147,34 @@ curl -sS -X POST "$TABLEPLAN_URL/api/v1/shopping-lists/generate" \
   }'
 ```
 
+Download exports or create a revocable store checklist link:
+
+```bash
+curl -sS -o recipe.pdf "$TABLEPLAN_URL/api/v1/recipes/RECIPE_ID/pdf?servings=6&measurementSystem=metric" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY"
+
+curl -sS -X POST "$TABLEPLAN_URL/api/v1/shopping-lists/LIST_ID/shares" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"expiresInDays":14}'
+
+curl -sS -X POST "$TABLEPLAN_URL/api/v1/shopping-lists/LIST_ID/email" \
+  -H "Authorization: Bearer $TABLEPLAN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"expiresInDays":14}'
+```
+
+Email always targets the authenticated account email. Share URLs are bearer
+capabilities: display them once, do not log them, and revoke them when no longer
+needed. Local PDF endpoints return print HTML and local email uses capture mode.
+
 Errors are JSON objects containing `code` and `message`. `401` means the
 credential is missing, invalid, expired, or revoked. `403` means its scopes are
 insufficient. Revoke a compromised key immediately from Settings.
 
 ## MCP Endpoint
 
-The Streamable HTTP endpoint is `/mcp`. It publishes fourteen bounded tools:
+The Streamable HTTP endpoint is `/mcp`. It publishes seventeen bounded tools:
 
 | Tool | Required scope | Behavior |
 | --- | --- | --- |
@@ -171,6 +192,9 @@ The Streamable HTTP endpoint is `/mcp`. It publishes fourteen bounded tools:
 | `copy_previous_meal_plan` | `plans:write` | Copy the previous week into an empty target week |
 | `generate_shopping_list` | `shopping:write` | Create a combined list snapshot |
 | `get_shopping_list` | `shopping:read` | Read the household's latest list |
+| `create_shopping_list_link` | `shopping:write` | Create a scoped, expiring store checklist URL |
+| `revoke_shopping_list_link` | `shopping:write` | Revoke one store checklist capability |
+| `email_shopping_list` | `shopping:write` | Email a list to the authenticated account email |
 
 The server returns concise text plus structured content and marks read versus
 write tools with MCP annotations. Shopping-list reads include their source plan

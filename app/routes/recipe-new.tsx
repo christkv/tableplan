@@ -56,7 +56,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     await saveIngestionDraft(env.DB, ingestionId, session.householdId, extractRecipeFromText(new TextDecoder().decode(body), file?.name));
   } else if (env.RECIPE_EXTRACTION_MODE === "local") {
     await updateIngestionStatus(env.DB, ingestionId, "failed", "Cloud extraction is required for this file", {
-      code: "cloud_ai_required", message: "Image and document extraction uses Workers AI. Set RECIPE_EXTRACTION_MODE=cloud or test this source in preview.",
+      code: "cloud_ai_required", message: "Image and document extraction requires cloud conversion. Set RECIPE_EXTRACTION_MODE=openrouter, configure OpenRouter, or test this source in preview.",
     });
   } else {
     const { getAgentByName } = await import("agents");

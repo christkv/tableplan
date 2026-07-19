@@ -1,4 +1,4 @@
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Copy, FileDown, Files, Plus, Trash2 } from "lucide-react";
 import { Form, Link, redirect } from "react-router";
 
 import type { Route } from "./+types/plan";
@@ -96,7 +96,7 @@ export default function Plan({ loaderData }: Route.ComponentProps) {
   const items = loaderData.plan?.items ?? [];
   return (
     <div className="page-shell plan-page">
-      <header className="page-header"><div><p className="eyebrow">Weekly rhythm</p><h1>Meal plan</h1><p className="page-subtitle">{loaderData.start} to {loaderData.end}</p></div><div className="header-actions"><Link className="button button-secondary button-icon" aria-label="Previous week" to={`/plan?week=${addDays(loaderData.start, -7)}`}><ChevronLeft size={18} /></Link><Link className="button button-secondary button-default" to="/plan">This week</Link><Link className="button button-secondary button-icon" aria-label="Next week" to={`/plan?week=${addDays(loaderData.start, 7)}`}><ChevronRight size={18} /></Link></div></header>
+      <header className="page-header"><div><p className="eyebrow">Weekly rhythm</p><h1>Meal plan</h1><p className="page-subtitle">{loaderData.start} to {loaderData.end}</p></div><div className="header-actions">{loaderData.plan ? <><a className="button button-secondary button-icon" title="Download meal plan PDF" aria-label="Download meal plan PDF" target="_blank" rel="noreferrer" href={`/api/v1/meal-plans/${loaderData.plan.id}/pdf`}><FileDown size={18} /></a><a className="button button-secondary button-icon" title="Download meal plan and shopping list PDF" aria-label="Download meal plan and shopping list PDF" target="_blank" rel="noreferrer" href={`/api/v1/meal-plans/${loaderData.plan.id}/combined.pdf`}><Files size={18} /></a></> : null}<Link className="button button-secondary button-icon" aria-label="Previous week" to={`/plan?week=${addDays(loaderData.start, -7)}`}><ChevronLeft size={18} /></Link><Link className="button button-secondary button-default" to="/plan">This week</Link><Link className="button button-secondary button-icon" aria-label="Next week" to={`/plan?week=${addDays(loaderData.start, 7)}`}><ChevronRight size={18} /></Link></div></header>
       {!items.length ? <section className="plan-copy">
         <div><Copy size={19} /><div><h2>Start from last week</h2><p>{loaderData.previousPlan?.items.length ? `Copy ${loaderData.previousPlan.items.length} planned meal${loaderData.previousPlan.items.length === 1 ? "" : "s"}, then add or remove anything for this week.` : "The previous week has no planned meals to copy."}</p></div></div>
         <Form method="post"><input type="hidden" name="week" value={loaderData.start} /><Button name="intent" value="copy-previous" variant="secondary" disabled={!loaderData.previousPlan?.items.length}><Copy size={16} /> Copy previous week</Button></Form>

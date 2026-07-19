@@ -12,6 +12,8 @@ import { generateShoppingList, getLatestShoppingList, refreshShoppingListForPlan
 import { resolveServingScale, scaleStoredQuantity } from "../domain/quantity/display";
 import { getRecipeIngestion, publishRecipeDraft } from "../ingestion/service";
 import { startTextRecipeIngestion } from "../ingestion/start";
+import { queueShoppingListEmail } from "../email/shopping-email";
+import { createShoppingShare, revokeShoppingShare } from "../sharing/shopping-share";
 
 const result = (value: unknown, text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -209,6 +211,43 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     assertScope(access, "shopping:read");
     const list = await getLatestShoppingList(env.DB, access.householdId);
     return result({ list }, list ? `The latest list has ${list.items.length} items.` : "No shopping list exists yet.");
+  });
+
+  server.registerTool("create_shopping_list_link", {
+    title: "Create store checklist link",
+    description: "Create a time-limited, revocable, login-free checklist link for one shopping list. The returned capability URL is shown once and grants read/check access to that list only.",
+    inputSchema: { listId: z.string().min(1), expiresInDays: z.union([z.literal(3), z.literal(7), z.literal(14), z.literal(30)]).default(14) },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  }, async ({ listId, expiresInDays }) => {
+    assertScope(access, "shopping:write");
+    const share = await createShoppingShare(env.DB, { householdId: access.householdId, userId: access.userId, listId, expiresInDays });
+    const shareUrl = `${env.PUBLIC_APP_URL.replace(/\/$/, "")}/shared/shopping#access=${encodeURIComponent(share.token)}`;
+    return result({ shareId: share.id, shareUrl, expiresAt: share.expiresAt }, `Created a store checklist link that expires ${share.expiresAt}. Treat the returned URL as a secret.`);
+  });
+
+  server.registerTool("revoke_shopping_list_link", {
+    title: "Revoke store checklist link",
+    description: "Immediately revoke one login-free shopping-list capability.",
+    inputSchema: { listId: z.string().min(1), shareId: z.string().min(1) },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  }, async ({ listId, shareId }) => {
+    assertScope(access, "shopping:write");
+    const revoked = await revokeShoppingShare(env.DB, access.householdId, listId, shareId);
+    if (!revoked) throw new Error("Shopping-list link not found");
+    return result({ listId, shareId, revoked: true }, "The store checklist link was revoked.");
+  });
+
+  server.registerTool("email_shopping_list", {
+    title: "Email shopping list",
+    description: "Email one shopping list and its time-limited store checklist link to the authenticated user's account email. It cannot send to an arbitrary recipient.",
+    inputSchema: { listId: z.string().min(1), expiresInDays: z.union([z.literal(3), z.literal(7), z.literal(14), z.literal(30)]).default(14) },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async ({ listId, expiresInDays }) => {
+    assertScope(access, "shopping:write");
+    const user = await env.DB.prepare('SELECT email FROM "user" WHERE id=?').bind(access.userId).first<{ email: string }>();
+    if (!user) throw new Error("Account email not found");
+    const delivery = await queueShoppingListEmail(env, { householdId: access.householdId, userId: access.userId, listId, recipientEmail: user.email, expiresInDays });
+    return result({ deliveryId: delivery.deliveryId, shareId: delivery.shareId, expiresAt: delivery.expiresAt }, `Queued the shopping list for the authenticated account email. Delivery ID: ${delivery.deliveryId}.`);
   });
 
   return server;

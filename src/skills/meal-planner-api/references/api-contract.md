@@ -14,6 +14,7 @@ shown once when created under **Settings > API access**.
 | GET | `/openapi.json` | none | OpenAPI 3.1 document |
 | GET | `/recipes/search?q=&ingredient=&tag=&tagMatch=&scope=&limit=` | `recipes:read` | Search accessible recipes; repeat exact `tag` and optionally scope ownership |
 | GET | `/recipes/{recipeId}?servings=` | `recipes:read` | Get recipe detail with optional scaled parsed quantities |
+| GET | `/recipes/{recipeId}/pdf` | `recipes:read` | Download or locally preview a serving-aware recipe PDF |
 | POST | `/recipe-ingestions` | `recipes:write` | Extract supplied text into an unpublished review draft |
 | GET | `/recipe-ingestions/{ingestionId}` | `recipes:read` | Poll an owned job and read its draft/mappings |
 | POST | `/recipe-ingestions/{ingestionId}` | `recipes:write` | Publish an approved draft, private by default |
@@ -24,8 +25,15 @@ shown once when created under **Settings > API access**.
 | POST | `/meal-plans` | `plans:write` | Add a recipe to a plan |
 | PATCH | `/meal-plan-items/{itemId}` | `plans:write` | Change planned servings and refresh its shopping list |
 | POST | `/meal-plans/clone-previous` | `plans:write` | Copy the previous week into an empty target week |
+| GET | `/meal-plans/{planId}/pdf` | `plans:read` | Download or preview a meal-plan PDF |
+| GET | `/meal-plans/{planId}/combined.pdf` | `plans:read`, `shopping:read` | Download a linked plan and shopping-list PDF |
 | POST | `/shopping-lists/generate` | `shopping:write` | Generate list snapshot |
 | GET | `/shopping-lists/latest` | `shopping:read` | Get latest list |
+| GET | `/shopping-lists/{listId}/pdf` | `shopping:read` | Download or preview a printable checklist PDF |
+| GET, POST | `/shopping-lists/{listId}/shares` | `shopping:read` or `shopping:write` | List share metadata or create a one-time capability URL |
+| DELETE | `/shopping-lists/{listId}/shares/{shareId}` | `shopping:write` | Revoke a checklist capability |
+| POST | `/shopping-lists/{listId}/email` | `shopping:write` | Email the list to the authenticated account email |
+| GET | `/email-deliveries/{deliveryId}` | `shopping:read` | Read owned delivery state |
 
 `POST /meal-plans` JSON fields: `week`, `recipeId`, `date`, `slot`, and positive
 `servings`. Read `mealSlots` from `GET /meal-plans` and use one of its stable

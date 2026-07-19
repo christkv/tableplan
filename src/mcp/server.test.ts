@@ -57,6 +57,9 @@ describe("MCP access context", () => {
       "copy_previous_meal_plan",
       "generate_shopping_list",
       "get_shopping_list",
+      "create_shopping_list_link",
+      "revoke_shopping_list_link",
+      "email_shopping_list",
     ]);
     expect(payload.result.tools.find((tool) => tool.name === "search_recipes")?.annotations?.readOnlyHint).toBe(true);
     expect(payload.result.tools.find((tool) => tool.name === "search_recipes")?.inputSchema?.properties).toHaveProperty("tags");
@@ -69,5 +72,6 @@ describe("MCP access context", () => {
     expect(payload.result.tools.find((tool) => tool.name === "add_recipe_to_plan")?.annotations?.readOnlyHint).toBe(false);
     expect(payload.result.tools.find((tool) => tool.name === "update_meal_plan_servings")?.annotations?.readOnlyHint).toBe(false);
     expect(payload.result.tools.find((tool) => tool.name === "copy_previous_meal_plan")?.annotations?.readOnlyHint).toBe(false);
+    expect(payload.result.tools.find((tool) => tool.name === "email_shopping_list")?.annotations?.readOnlyHint).toBe(false);
   });
 });

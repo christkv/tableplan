@@ -513,7 +513,8 @@ Deliverables:
 - Paste, document-upload, and image-upload creation paths.
 - Private R2 source artifacts with retention and authenticated preview.
 - Per-ingestion Cloudflare Agent with a durable AgentWorkflow.
-- Workers AI document/image conversion and JSON-schema recipe extraction.
+- Workers AI document conversion plus separate configurable OpenRouter text and
+  vision primary/fallback model chains for JSON-schema recipe extraction.
 - Human review and approval before relational publishing.
 - Canonical ingredient lookup, conservative mapping, and household aliases.
 - Search, detail, favorites, planning, shopping, REST, and MCP authorization.
@@ -535,6 +536,32 @@ Acceptance:
 - Retry and duplicate approval create exactly one recipe.
 - Local development does not require cloud AI credentials.
 
+## [Phase 14: PDF Exports, Email Delivery, and Public Checklists](phases/phase-14-pdf-email-public-checklists.md)
+
+Deliverables:
+
+- Recipe, meal-plan, shopping-list, and combined plan/list PDF downloads.
+- Dedicated print models and layouts for A4 and Letter output.
+- Printable and state-aware shopping-list checkboxes.
+- Account-email-only shopping-list delivery through a queued provider adapter.
+- Expiring, revocable, list-scoped login-free checklist links.
+- Local HTML and email capture previews that require no cloud credentials.
+
+Build order:
+
+1. Export models and local print previews.
+2. Cloudflare Browser Rendering PDF downloads.
+3. Public checklist capabilities and mobile UI.
+4. Cloudflare Email Service and Queue delivery.
+5. OpenAPI/MCP documentation, security hardening, and preview QA.
+
+Acceptance:
+
+- All four PDF types reflect the current servings, measurements, plan, and list.
+- Emailed links work in a fresh logged-out browser and expose one list only.
+- Links expire and revoke immediately without storing or logging raw tokens.
+- Local export and email design iteration works without production bindings.
+
 ## Recommended Build Order
 
 1. Bootstrap app and local D1.
@@ -551,6 +578,8 @@ Acceptance:
 12. Full import and production hardening.
 13. Private recipe ingestion can proceed after its ownership migration and may
     run in parallel with blocked Phase 10 cloud provisioning.
+14. PDF exports, email delivery, and public checklists after stable plan/list
+    identifiers and serving-aware shopping-list refresh behavior.
 
 ## Open Questions
 

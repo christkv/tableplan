@@ -18,12 +18,65 @@ meal plan references it.
 
 - `RECIPE_EXTRACTION_MODE=local`: pasted text and text files use
   `extractRecipeFromText`; binary jobs fail safely with `cloud_ai_required`.
-- `RECIPE_EXTRACTION_MODE=cloud`: the named `RecipeIngestionAgent` starts
+- `RECIPE_EXTRACTION_MODE=openrouter`: the named `RecipeIngestionAgent` starts
   `RecipeIngestionWorkflow`. The workflow reads the owned R2 object, uses
-  Workers AI `toMarkdown` for binary sources, requests schema-constrained JSON,
-  stores a D1 review draft, and reports progress to the Agent.
+  Workers AI `toMarkdown` only to convert PDF/DOCX/ODT sources, and sends text
+  or a private image directly to the operation's OpenRouter model chain. The
+  workflow stores a schema-constrained D1 review draft and reports progress to
+  the Agent.
 - D1 is authoritative for ownership, job status, review data, recipes, aliases,
   and audit events. R2 stores original private source bytes.
+
+## OpenRouter Configuration
+
+OpenRouter is used through its OpenAI-compatible Chat Completions endpoint. No
+provider SDK is installed. Select models with environment variables:
+
+```dotenv
+RECIPE_EXTRACTION_MODE=openrouter
+RECIPE_TEXT_EXTRACTION_MODEL=~openai/gpt-latest
+RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS=anthropic/claude-sonnet-4
+RECIPE_VISION_EXTRACTION_MODEL=google/gemini-2.5-flash
+RECIPE_VISION_EXTRACTION_FALLBACK_MODELS=openai/gpt-4.1-mini
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_APP_TITLE=Tableplan
+OPENROUTER_API_KEY=replace-with-a-secret
+```
+
+Model selection is based on the ingestion operation:
+
+| Operation | Inputs | Primary/fallback configuration |
+| --- | --- | --- |
+| Text extraction | Paste, TXT, Markdown, converted PDF/DOCX/ODT | `RECIPE_TEXT_EXTRACTION_MODEL`, `RECIPE_TEXT_EXTRACTION_FALLBACK_MODELS` |
+| Vision extraction | JPEG, PNG, WebP | `RECIPE_VISION_EXTRACTION_MODEL`, `RECIPE_VISION_EXTRACTION_FALLBACK_MODELS` |
+
+Each optional comma-separated fallback list is tried in order and supports up
+to three distinct models. Images are sent as private base64 data URLs directly
+to OpenRouter and are never exposed through a public R2 URL. OpenRouter filters
+image requests to models and providers that accept image input. The resolved
+model is saved on the ingestion job for audit and cost analysis. A model change
+requires configuration and redeployment, not a code or schema change.
+
+Requests require JSON Schema support and route only to endpoints that support
+every supplied parameter. They deny data-collection endpoints and require
+zero-data-retention processing because uploaded recipes are private user data.
+Choose models that have a compatible structured-output and ZDR endpoint. The
+base URL is restricted to HTTPS OpenRouter hosts; use
+`https://eu.openrouter.ai/api/v1` when EU in-region processing is required.
+
+Keep `RECIPE_EXTRACTION_MODE=local` for credential-free local iteration. To
+exercise the cloud workflow locally, put the key in uncommitted `.dev.vars`,
+set the mode to `openrouter`, and use real or remote Cloudflare bindings for the
+Agent, Workflow, R2, and document `toMarkdown` conversion.
+
+References:
+
+- OpenRouter API and authentication: https://openrouter.ai/docs/api/reference/overview
+- Structured outputs: https://openrouter.ai/docs/guides/features/structured-outputs
+- Image inputs: https://openrouter.ai/docs/guides/overview/multimodal/image-understanding
+- Model fallbacks: https://openrouter.ai/docs/guides/routing/model-fallbacks
+- Provider routing and privacy: https://openrouter.ai/docs/guides/routing/provider-selection
+- Available model IDs: https://openrouter.ai/docs/api/api-reference/models/get-models
 
 ## Limits
 

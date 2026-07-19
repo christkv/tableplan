@@ -284,9 +284,9 @@ returns IDs, names, grocery categories, common aliases, and match reasons.
 - Private R2 bucket: source images/documents and optionally extracted text.
 - `RecipeIngestionAgent`: one Agent instance per ingestion job.
 - `RecipeIngestionWorkflow`: one durable Workflow instance per ingestion job.
-- Workers AI `toMarkdown`: source text/OCR conversion for supported files.
-- AI Gateway: model routing, token/cost/latency metadata, limits, and retries.
-- Workers AI or a gateway-routed model: JSON-schema recipe extraction.
+- Workers AI `toMarkdown`: PDF/office-document text conversion.
+- OpenRouter: separate selectable text and vision primary/fallback model chains,
+  private multimodal routing, and JSON-schema recipe extraction.
 - Vectorize/embedding queue: post-publish indexing only, after Phase 10 exists.
 
 ### Agent Responsibility
@@ -334,14 +334,15 @@ Workflow steps:
    - Verify size, media type, and SHA-256 against D1.
 3. **Convert source**
    - Text inputs pass through bounded decoding and normalization.
-   - Documents/images use `env.AI.toMarkdown()` with PDF metadata disabled.
+   - PDF/DOCX/ODT inputs use `env.AI.toMarkdown()`.
+   - JPEG/PNG/WebP inputs remain private bytes and are sent directly to the
+     configured OpenRouter vision model as base64 image content.
    - Store large converted text in R2; return only its key and hash from the
      Workflow step.
 4. **Extract structured recipe**
-   - Call the configured model through AI Gateway.
+   - Call the operation-specific OpenRouter text or vision model chain.
    - Require JSON Schema output.
-   - Set `cf-aig-collect-log-payload: false` so recipe text and model output are
-     not retained in gateway logs; retain metadata such as cost and latency.
+   - Require no-data-collection and zero-data-retention provider routing.
    - Treat source text as untrusted data, not instructions. The model gets no
      tools and cannot make network or database calls.
 5. **Validate and normalize**
@@ -542,8 +543,8 @@ by a resumable D1 job without AI.
 ### 13C: Agent and Workflow Extraction
 
 - Add `agents` dependency, Agent Durable Object, Agent migration, and Workflow.
-- Integrate `toMarkdown`, AI Gateway, JSON Schema extraction, prompt/model
-  versions, retry policy, and progress updates.
+- Integrate document `toMarkdown`, OpenRouter text/vision model chains, JSON
+  Schema extraction, prompt/model versions, retry policy, and progress updates.
 - Keep payload logging disabled for private recipe content.
 
 Exit: fixture and preview sources reliably reach `review_ready`; failures can
@@ -664,8 +665,8 @@ cleanup job so deletion can be audited.
   one recipe.
 - Local UI development and CI work with deterministic mocks and no cloud
   credentials.
-- Preview tests cover real Agent, Workflow, R2, `toMarkdown`, AI Gateway, and
-  model bindings before production enablement.
+- Preview tests cover real Agent, Workflow, R2, document `toMarkdown`, and both
+  OpenRouter model chains before production enablement.
 
 ## Non-Goals
 
@@ -695,8 +696,11 @@ cleanup job so deletion can be audited.
   https://developers.cloudflare.com/workers-ai/features/markdown-conversion/usage/rest-api/
   https://developers.cloudflare.com/workers-ai/features/markdown-conversion/supported-formats/
   https://developers.cloudflare.com/workers-ai/features/markdown-conversion/conversion-options/
-- Workers AI JSON Mode:
-  https://developers.cloudflare.com/workers-ai/features/json-mode/
+- OpenRouter structured output and model routing:
+  https://openrouter.ai/docs/guides/features/structured-outputs
+  https://openrouter.ai/docs/guides/overview/multimodal/image-understanding
+  https://openrouter.ai/docs/guides/routing/model-fallbacks
+  https://openrouter.ai/docs/guides/routing/provider-selection
 - R2 upload and presigned URL patterns:
   https://developers.cloudflare.com/r2/objects/upload-objects/
   https://developers.cloudflare.com/r2/api/s3/presigned-urls/

@@ -6,7 +6,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 
 ## Planning Decisions
 
-- The canonical roadmap has 14 phases numbered 0 through 13.
+- The canonical roadmap has 15 phases numbered 0 through 14.
 - Local development and Cloudflare deployment use the same application and domain services; only service bindings differ.
 - Phase 2 imports a deterministic sample for product development. The full 500,471-row production import is delayed until Phase 11, after schema and search contracts are stable.
 - Favorites are included in Phase 3 so the first recipe experience supports discovery, drill-down, and saving.
@@ -32,7 +32,8 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 | 10 | [Vector and Hybrid Search](phase-10-vector-hybrid-search.md) | Semantic recipe discovery with FTS fallback | Phase 3 |
 | 11 | [Full Import and Production Launch](phase-11-full-import-production.md) | Reproducible full-catalog production release | Phases 6, 7, 10 |
 | 12 | [Hardening and Operations](phase-12-hardening-operations.md) | Operational, security, and recovery readiness | Phase 11 |
-| 13 | [Private Recipe Ingestion](phase-13-private-recipe-ingestion.md) | Reviewed text/file/image extraction into private recipes | Phases 3-7; Cloudflare AI, R2, Agents, and Workflows |
+| 13 | [Private Recipe Ingestion](phase-13-private-recipe-ingestion.md) | Reviewed text/file/image extraction into private recipes | Phases 3-7; OpenRouter, Cloudflare AI, R2, Agents, and Workflows |
+| 14 | [PDF, Email, and Public Checklists](phase-14-pdf-email-public-checklists.md) | Printable exports and a secure login-free store checklist | Phases 4-6; Browser Rendering, Email Service, and Queues |
 
 ## Cross-Phase Rules
 
@@ -54,6 +55,7 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 | Initial ChatGPT distribution model | Phase 8 | Private/internal preview before public distribution |
 | Nutrition enrichment | Phase 11 scope freeze | Post-MVP; preserve schema extension points only |
 | Private recipe default visibility | Phase 13 schema migration | User-private; require explicit household sharing before shared planning |
+| Public shopping-link lifetime | Phase 14 capability migration | 14 days, user-selectable from 3, 7, 14, or 30 days, with immediate revocation |
 
 ## Release Gates
 
@@ -63,5 +65,6 @@ This directory is the execution-level roadmap for the family meal planner. Each 
 - **Semantic-search preview:** through Phase 10.
 - **Production catalog launch:** through Phase 11.
 - **Operational readiness:** Phase 12.
+- **Printable and shareable planning:** Phase 14.
 
 The application-level product and architecture context remains in [the application plan](../meal-planner-application-plan.md). The condensed cross-phase roadmap remains in [the phased implementation plan](../phased-implementation-plan.md).

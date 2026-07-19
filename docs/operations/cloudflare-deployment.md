@@ -17,14 +17,26 @@ npx wrangler d1 create meal-planner-preview
 npx wrangler d1 create meal-planner-production
 npx wrangler r2 bucket create meal-planner-private-recipes-preview
 npx wrangler r2 bucket create meal-planner-private-recipes-production
+npx wrangler queues create tableplan-email-preview
+npx wrangler queues create tableplan-email-preview-dlq
+npx wrangler queues create tableplan-email-production
+npx wrangler queues create tableplan-email-production-dlq
 ```
 
-Private recipe ingestion requires R2 and Workers AI. The Worker deployment
+Private recipe ingestion requires R2, an OpenRouter account/key, and Workers AI
+for PDF/office-document-to-text conversion. The Worker deployment
 creates or updates the `RecipeIngestionAgent` Durable Object class and the
 environment-specific `RecipeIngestionWorkflow` from `wrangler.jsonc`. Confirm
 the account has Workers AI, Workflows, Durable Objects, and R2 enabled before
 deploying preview. Vectorize and import queues remain future Phase 10/11
 resources and are not required for private recipe ingestion.
+
+PDF and shopping-list email additionally require Browser Rendering, Email
+Service, the environment's email Queue, and the dead-letter Queue. Replace the
+example sender and application URLs in `wrangler.jsonc`. Verify the sender
+domain in Email Service and publish SPF, DKIM, and DMARC before enabling
+`EMAIL_MODE=cloud`. `PUBLIC_APP_URL` must be the fixed public origin; emailed
+links must never be derived from a request Host header.
 
 ## Secrets
 
@@ -34,10 +46,21 @@ Set secrets separately for each environment:
 npx wrangler secret put BETTER_AUTH_SECRET --env preview
 npx wrangler secret put GOOGLE_CLIENT_ID --env preview
 npx wrangler secret put GOOGLE_CLIENT_SECRET --env preview
-npx wrangler secret put EMAIL_PROVIDER_API_KEY --env preview
+npx wrangler secret put OPENROUTER_API_KEY --env preview
 ```
 
-Repeat for production. Use distinct values. `BETTER_AUTH_URL`, `APP_ENV`, and non-secret feature configuration may be Wrangler variables.
+Repeat for production. Use distinct values. Never put `OPENROUTER_API_KEY` in
+`wrangler.jsonc`. `BETTER_AUTH_URL`, `APP_ENV`, the selected OpenRouter model,
+and other non-secret feature configuration may be Wrangler variables.
+
+Before deployment, set `RECIPE_TEXT_EXTRACTION_MODEL` and
+`RECIPE_VISION_EXTRACTION_MODEL` to appropriate OpenRouter model IDs. Each has
+an optional comma-separated `*_FALLBACK_MODELS` chain of up to three IDs. The
+vision chain must accept image input; all selected endpoints must support strict
+JSON Schema and zero-data-retention routing. Keep
+`OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`, or use the official EU
+endpoint when required. See `docs/operations/private-recipe-ingestion.md` for
+the complete extraction configuration.
 
 ## Migrate and Deploy Preview
 
@@ -53,12 +76,16 @@ After deployment:
 - Complete Google and first-party sign-in tests.
 - Search and open a known imported recipe.
 - Create a meal plan and generate a shopping list.
+- Download all four export variants and inspect A4 and Letter output.
+- Send a shopping list to the account email, open its link in a fresh logged-out
+  mobile browser, toggle an item, then revoke the link and confirm access ends.
 - Exercise a scoped test API key.
 - Connect MCP Inspector and one supported assistant client.
 - Paste and publish a private text recipe, then confirm a second account gets
   404 for its ID.
-- Upload an image/PDF, review the Workers AI extraction, publish it, share it
-  with the household, and add it to a plan.
+- Upload an image and verify the configured vision model was recorded; upload a
+  PDF and verify the configured text model was recorded. Review and publish
+  both, share one with the household, and add it to a plan.
 
 ## Deploy Production
 
