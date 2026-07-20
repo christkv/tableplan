@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 This is the restart ledger for Tableplan. Update it after every verified
 checkpoint. A phase is complete only when its acceptance criteria are met; an
@@ -50,6 +50,9 @@ OAuth have been verified.
 - Owner-managed household invitations with relationship labels, captured/queued
   email, new password-account setup, existing-account acceptance, and shared
   household selection.
+- Meal-plan recipe links resolve a household-scoped plan-item context, display
+  the planned date/section/servings, scale the recipe to that serving count, and
+  propagate contextual serving edits back to the plan and linked shopping list.
 - Run, import, API/integration, deployment, architecture, and per-phase
   documentation.
 
@@ -78,6 +81,9 @@ OAuth have been verified.
 
 | Date | Verification | Result |
 | --- | --- | --- |
+| 2026-07-20 | Planned recipe context quality gate | `npm run check` passed: generated Cloudflare/route types, TypeScript, 121 tests across 26 files, client build, and Worker SSR build |
+| 2026-07-20 | Contextual planned-recipe live smoke | Opened a four-serving `13 Bean Chili` plan entry through its item-scoped recipe link; detail showed the source week, Monday/Dinner, four servings, and 0.8-scaled ingredients; increasing to five updated the plan and recipe to source quantities, then the original four servings were restored |
+| 2026-07-20 | Planned recipe context tests | Added household/recipe-scoped plan-item lookup and bounded contextual serving adjustment coverage; focused planning and quantity suites passed 14 tests |
 | 2026-07-19 | Household accounts quality gate | `npm run check` passed: generated Cloudflare/route types, TypeScript, 119 tests across 26 files, client build, and Worker SSR build |
 | 2026-07-19 | Household invitation live smoke | Owner created a captured flatmate invitation; the recipient exchanged the fragment token, created a Better Auth username/password account, joined the owner's household, saw both members in Settings, and token reuse returned HTTP 410; smoke data was removed |
 | 2026-07-19 | Household invitation migration/tests | Applied `0007_household_invitations.sql` to existing local D1; focused capability, email, and household resolver suites passed 9 tests across 3 files |

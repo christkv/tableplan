@@ -150,6 +150,13 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .empty-state > svg { margin-bottom: 14px; color: var(--accent); }
 
 .back-link { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 28px; color: var(--muted); font-size: 13px; font-weight: 650; }
+.recipe-plan-context { min-height: 72px; margin: -8px 0 25px; padding: 11px 0; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 11px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.recipe-plan-context > svg { color: var(--accent); }
+.recipe-plan-context p { margin-bottom: 3px; }
+.recipe-plan-context div > strong, .recipe-plan-context div > span { display: block; }
+.recipe-plan-context div > strong { font-size: 13px; }
+.recipe-plan-context div > span { margin-top: 3px; color: var(--muted); font-size: 11px; text-transform: capitalize; }
+.recipe-plan-context > a { color: var(--accent-strong); font-size: 11px; font-weight: 750; }
 .detail-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; padding-bottom: 27px; border-bottom: 1px solid var(--border); }
 .detail-header h1 { max-width: 780px; margin-top: 13px; }
 .detail-meta { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 13px; }
@@ -169,6 +176,13 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .serving-adjuster .input { width: 42px; min-height: 34px; padding: 0 3px; border: 0; border-radius: 0; text-align: center; font-size: 12px; font-weight: 750; appearance: textfield; }
 .serving-adjuster .input::-webkit-inner-spin-button, .serving-adjuster .input::-webkit-outer-spin-button { margin: 0; appearance: none; }
 .serving-adjuster .button-icon { width: 32px; height: 34px; padding: 0; color: var(--accent); }
+.planned-serving-adjuster { margin: 0; padding: 0; }
+.planned-serving-adjuster .serving-step { border: 0; background: transparent; cursor: pointer; }
+.planned-serving-input { min-width: 0; display: grid; grid-template-columns: 57px 42px 32px; align-items: center; }
+.planned-serving-input label { color: var(--muted); font-size: 10px; font-weight: 700; text-align: right; }
+.planned-serving-input .input { width: 42px; min-height: 34px; padding: 0 3px; border: 0; border-radius: 0; text-align: center; font-size: 12px; font-weight: 750; appearance: textfield; }
+.planned-serving-input .input::-webkit-inner-spin-button, .planned-serving-input .input::-webkit-outer-spin-button { margin: 0; appearance: none; }
+.planned-serving-input .button-icon { width: 32px; height: 34px; padding: 0; color: var(--accent); }
 .ingredient-list, .step-list { margin: 0; padding: 0; list-style: none; }
 .ingredient-list li { min-height: 49px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e5e8e5; font-size: 14px; line-height: 1.35; }
 .parse-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #909a94; }
@@ -489,6 +503,8 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
   .detail-actions { flex-wrap: wrap; }
   .detail-actions .button-primary { flex: 1; }
   .detail-columns { grid-template-columns: 1fr; }
+  .recipe-plan-context { grid-template-columns: 24px minmax(0, 1fr); }
+  .recipe-plan-context > a, .recipe-plan-context > .settings-saved { grid-column: 2; justify-self: start; }
   .ingredient-heading { align-items: flex-start; flex-direction: column; }
   .header-actions { max-width: 100%; overflow-x: auto; }
   .shopping-tools { align-items: stretch; flex-direction: column; }

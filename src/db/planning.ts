@@ -18,6 +18,18 @@ export interface MealPlanView {
   items: MealPlanItemView[];
 }
 
+export interface MealPlanItemContext {
+  itemId: string;
+  planId: string;
+  planName: string;
+  startsOn: string;
+  endsOn: string;
+  recipeId: string;
+  plannedDate: string;
+  mealSlot: string;
+  servings: number;
+}
+
 export async function getMealPlan(db: D1Database, householdId: string, startsOn: string, endsOn: string): Promise<MealPlanView | null> {
   const plan = await db.prepare("SELECT id, name, starts_on, ends_on FROM meal_plans WHERE household_id = ? AND starts_on = ? AND ends_on = ? ORDER BY created_at DESC LIMIT 1")
     .bind(householdId, startsOn, endsOn).first<{ id: string; name: string; starts_on: string; ends_on: string }>();
@@ -30,6 +42,37 @@ export async function getMealPlanById(db: D1Database, householdId: string, planI
     .bind(planId, householdId).first<{ id: string; name: string; starts_on: string; ends_on: string }>();
   if (!plan) return null;
   return getMealPlanItems(db, plan);
+}
+
+export async function getMealPlanItemContext(db: D1Database, householdId: string, itemId: string, recipeId: string): Promise<MealPlanItemContext | null> {
+  if (!itemId || itemId.length > 128) return null;
+  const row = await db.prepare(`SELECT mpi.id item_id, mpi.meal_plan_id plan_id, mp.name plan_name, mp.starts_on, mp.ends_on,
+      mpi.recipe_id, mpi.planned_date, mpi.meal_slot, mpi.servings
+    FROM meal_plan_items mpi JOIN meal_plans mp ON mp.id=mpi.meal_plan_id
+    WHERE mpi.id=? AND mpi.recipe_id=? AND mp.household_id=?`)
+    .bind(itemId, recipeId, householdId).first<{
+      item_id: string;
+      plan_id: string;
+      plan_name: string;
+      starts_on: string;
+      ends_on: string;
+      recipe_id: string;
+      planned_date: string;
+      meal_slot: string;
+      servings: string;
+    }>();
+  if (!row) return null;
+  return {
+    itemId: row.item_id,
+    planId: row.plan_id,
+    planName: row.plan_name,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    recipeId: row.recipe_id,
+    plannedDate: row.planned_date,
+    mealSlot: row.meal_slot,
+    servings: parsePlannedServings(row.servings),
+  };
 }
 
 async function getMealPlanItems(db: D1Database, plan: { id: string; name: string; starts_on: string; ends_on: string }): Promise<MealPlanView> {
@@ -70,6 +113,13 @@ export function parsePlannedServings(value: unknown): number {
   const servings = Number(value);
   if (!Number.isFinite(servings) || servings < 0.25 || servings > 100) throw new Error("Servings must be between 0.25 and 100");
   return servings;
+}
+
+export function resolvePlannedServingUpdate(currentValue: unknown, requestedValue: unknown, adjustment: unknown): number {
+  const current = parsePlannedServings(currentValue);
+  if (adjustment === "decrease") return Math.max(0.25, current - (current < 1 ? 0.25 : 1));
+  if (adjustment === "increase") return Math.min(100, current + (current < 1 ? 0.25 : 1));
+  return parsePlannedServings(requestedValue);
 }
 
 export async function updateMealPlanItemServings(db: D1Database, input: { householdId: string; itemId: string; servings: number }) {
