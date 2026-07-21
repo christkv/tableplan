@@ -1,8 +1,10 @@
+import { dash } from "@better-auth/infra";
 import { betterAuth } from "better-auth";
 import { username } from "better-auth/plugins/username";
 import { redirect } from "react-router";
 
 interface AuthEnvironment {
+  BETTER_AUTH_API_KEY?: string;
   BETTER_AUTH_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
@@ -40,7 +42,12 @@ export function createAuth(env: CloudflareEnvironment, ctx: ExecutionContext) {
       requireEmailVerification: false,
     },
     socialProviders: google,
-    plugins: [username({ minUsernameLength: 3, maxUsernameLength: 32 })],
+    plugins: [
+      username({ minUsernameLength: 3, maxUsernameLength: 32 }),
+      ...(authEnv.BETTER_AUTH_API_KEY
+        ? [dash({ apiKey: authEnv.BETTER_AUTH_API_KEY })]
+        : []),
+    ],
     advanced: {
       backgroundTasks: {
         handler: (promise) => ctx.waitUntil(promise),

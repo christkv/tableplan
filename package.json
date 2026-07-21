@@ -20,12 +20,13 @@
     "seed:test-user": "tsx scripts/seed-local-test-user.ts",
     "import": "tsx scripts/import-recipes.ts",
     "import:sample": "tsx scripts/import-recipes.ts sample data/recipes_ingredients.csv --rows 5000 --out .import/sample.sqlite --apply-local",
-    "deploy:preview": "CLOUDFLARE_ENV=preview npm run build && wrangler deploy",
-    "deploy:production": "CLOUDFLARE_ENV=production npm run build && wrangler deploy",
+    "deploy:preview": "wrangler deploy --env preview",
+    "deploy:production": "wrangler deploy --env production",
     "postinstall": "wrangler types --env-interface CloudflareEnvironment"
   },
   "dependencies": {
     "@base-ui/react": "latest",
+    "@better-auth/infra": "^0.3.7",
     "@modelcontextprotocol/sdk": "latest",
     "@openrouter/sdk": "^0.13.66",
     "agents": "^0.17.4",

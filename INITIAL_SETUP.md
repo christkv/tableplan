@@ -100,12 +100,15 @@ configured Worker name, the preview URL normally has this form:
 https://family-meal-planner-preview.<account-subdomain>.workers.dev
 ```
 
-Replace both preview URL placeholders in `wrangler.jsonc` with that exact URL:
+For this Cloudflare account, use the deployed preview URL exactly:
 
 ```json
-"BETTER_AUTH_URL": "https://family-meal-planner-preview.<account-subdomain>.workers.dev",
-"PUBLIC_APP_URL": "https://family-meal-planner-preview.<account-subdomain>.workers.dev"
+"BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
+"PUBLIC_APP_URL": "https://family-meal-planner-preview.christkv.workers.dev"
 ```
+
+For a different Cloudflare account, replace `christkv` with that account's
+`workers.dev` subdomain.
 
 ### Option B: custom domain
 
@@ -169,6 +172,14 @@ interactively:
 npx wrangler secret put BETTER_AUTH_SECRET --env preview
 ```
 
+If the application is connected to Better Auth Dash, store the API key shown
+by the Dash project wizard. The server registers the Dash plugin only when this
+binding is present:
+
+```bash
+npx wrangler secret put BETTER_AUTH_API_KEY --env preview
+```
+
 If `RECIPE_EXTRACTION_PROVIDER` is `openrouter`, add its key:
 
 ```bash
@@ -186,11 +197,12 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET --env preview
 Register this exact authorized redirect URI in the Google OAuth client:
 
 ```text
-https://<preview-origin>/api/auth/callback/google
+https://family-meal-planner-preview.christkv.workers.dev/api/auth/callback/google
 ```
 
-Replace `<preview-origin>` with the hostname configured in Step 5. Do not use a
-wildcard callback URL and do not reuse production OAuth credentials.
+For a different Cloudflare account or a custom preview domain, replace the
+origin with the hostname configured in Step 5. Do not use a wildcard callback
+URL and do not reuse production OAuth credentials.
 
 ## 8. Review the preview configuration
 
@@ -367,6 +379,23 @@ npm run deploy:production
 Treat `wrangler.jsonc` as the source of truth for non-secret Worker
 configuration. Store remote secrets with Wrangler and local-only secrets in the
 ignored `.dev.vars` file.
+
+## Troubleshooting Better Auth preview connectivity
+
+If sign-in reports that it could not connect to the server, verify the deployed
+Worker before changing application code:
+
+```bash
+curl -fsS https://family-meal-planner-preview.christkv.workers.dev/api/v1/health
+curl -i https://family-meal-planner-preview.christkv.workers.dev/api/auth/get-session
+npx wrangler versions view <version-id> --env preview --json
+```
+
+In the version output, confirm that `BETTER_AUTH_URL` and `PUBLIC_APP_URL`
+exactly match the browser origin. If Google sign-in is enabled, confirm that
+both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` appear as `secret_text`
+bindings. Better Auth does not register the Google provider when either binding
+is absent; add both secrets and deploy preview again.
 
 ## Related documentation
 

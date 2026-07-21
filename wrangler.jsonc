@@ -57,8 +57,8 @@
       "vars": {
         "APP_ENV": "preview",
         "LOG_LEVEL": "INFO",
-        "BETTER_AUTH_URL": "https://meal-planner-preview.example.workers.dev",
-        "PUBLIC_APP_URL": "https://meal-planner-preview.example.workers.dev",
+        "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
+        "PUBLIC_APP_URL": "https://family-meal-planner-preview.christkv.workers.dev",
         "PDF_MODE": "cloud",
         "EMAIL_MODE": "cloud",
         "EMAIL_FROM": "Tableplan <shopping@meal-planner.example.com>",
