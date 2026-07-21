@@ -20,10 +20,6 @@ const requestHandler = createRequestHandler(
 
 export default {
   async fetch(request, env, ctx) {
-    const maintenance = (env as unknown as { MIGRATION_MAINTENANCE_MODE?: string }).MIGRATION_MAINTENANCE_MODE === "true";
-    if (maintenance && !["GET", "HEAD", "OPTIONS"].includes(request.method) && new URL(request.url).pathname !== "/api/health") {
-      return Response.json({ code: "migration_maintenance", message: "Tableplan is temporarily read-only while storage is migrated." }, { status: 503, headers: { "retry-after": "300" } });
-    }
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env, ctx });
     return requestHandler(request, context);

@@ -9,7 +9,6 @@
   "vars": {
     "APP_ENV": "local",
     "LOG_LEVEL": "DEBUG",
-    "STORAGE_BACKEND": "d1",
     "BETTER_AUTH_URL": "http://127.0.0.1:5173",
     "PUBLIC_APP_URL": "http://127.0.0.1:5173",
     "PDF_MODE": "html-preview",
@@ -44,21 +43,12 @@
   "workflows": [
     { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-local", "class_name": "RecipeIngestionWorkflow" }
   ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "meal-planner-local",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
-    }
-  ],
   "env": {
     "preview": {
       "name": "family-meal-planner-preview",
       "vars": {
         "APP_ENV": "preview",
         "LOG_LEVEL": "INFO",
-        "STORAGE_BACKEND": "d1",
         "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
         "PUBLIC_APP_URL": "https://family-meal-planner-preview.christkv.workers.dev",
         "PDF_MODE": "cloud",
@@ -90,21 +80,12 @@
       "workflows": [
         { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-preview", "class_name": "RecipeIngestionWorkflow" }
       ],
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "meal-planner-preview",
-          "database_id": "9bb9b2b9-94c4-43d0-821a-7cffedcd2c96",
-          "migrations_dir": "migrations"
-        }
-      ]
     },
     "production": {
       "name": "family-meal-planner",
       "vars": {
         "APP_ENV": "production",
         "LOG_LEVEL": "INFO",
-        "STORAGE_BACKEND": "d1",
         "BETTER_AUTH_URL": "https://meal-planner.example.com",
         "PUBLIC_APP_URL": "https://meal-planner.example.com",
         "PDF_MODE": "cloud",
@@ -136,14 +117,6 @@
       "workflows": [
         { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-production", "class_name": "RecipeIngestionWorkflow" }
       ],
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "meal-planner-production",
-          "database_id": "22222222-2222-2222-2222-222222222222",
-          "migrations_dir": "migrations"
-        }
-      ]
     }
   }
 }

@@ -1,51 +1,34 @@
 # Tableplan
 
-Tableplan is a family meal planner built for Cloudflare Workers. It imports the
-recipe catalog in `data/recipes_ingredients.csv`, supports authenticated recipe
-discovery and favorites, builds weekly plans, and combines scaled ingredients
-into US or metric shopping lists. The same data is available through a scoped
-REST API and an MCP server for assistant clients.
+Tableplan is a family meal planner built with React Router and Cloudflare Workers. MongoDB is its only database. The Cloudflare application Worker reaches MongoDB through the separately deployed, bounded Node gateway in `gateway/`; it never opens database connections itself.
 
-Users can also paste recipe text or upload a document/image. Text extraction is
-deterministic during local development; Cloudflare Agents, Workflows, Workers
-AI, and private R2 artifacts handle deployed extraction. Every result remains a
-review draft until its owner publishes it as private or household-visible.
+The catalog importer streams `data/recipes_ingredients.csv` directly into MongoDB with stable IDs, resumable checkpoints, duplicate-safe upserts, issue records, and a maximum four-connection pool.
 
-## Quick Start
+## Quick start
 
-Prerequisites: Node.js 22 or newer and the source CSV in `data/`.
+Prerequisites: Node.js 22+, a transaction-capable local MongoDB instance on port `27017`, and the source CSV in `data/`.
 
 ```bash
 npm install
-npm run db:migrate:local
+cp .dev.vars.example .dev.vars
+cp gateway/local.env.example .env.gateway.local
+npm run gateway:migrate:local
 npm run import:sample
+npm run gateway:dev
+# In another terminal:
 npm run dev
 ```
 
-Open the local URL printed by `npm run dev`, create a local account, and sign in.
-The sample import scans the source file to select a deterministic 5,000-row
-sample, so its first run takes several minutes.
-
-Run the complete local quality gate with:
-
-```bash
-npm run check
-```
+Local data is isolated in `application_local`. The gateway listens at `http://127.0.0.1:8790`; application requests never connect to MongoDB directly. Run the full quality gate with `npm run check`.
 
 ## Documentation
 
-- [Initial Cloudflare setup](INITIAL_SETUP.md)
-- [Implementation progress](docs/implementation-progress.md)
+- [Initial setup](INITIAL_SETUP.md)
 - [Local development](docs/operations/local-development.md)
 - [Recipe import](docs/operations/recipe-import.md)
-- [Private recipe ingestion](docs/operations/private-recipe-ingestion.md)
+- [Cloudflare deployment](docs/operations/cloudflare-deployment.md)
+- [MongoDB gateway runbook](docs/migrations/mongodb-cutover-runbook.md)
 - [Household accounts](docs/operations/household-accounts.md)
 - [API and assistant integrations](docs/operations/api-and-integrations.md)
-- [Cloudflare deployment](docs/operations/cloudflare-deployment.md)
-- [Phase documents](docs/phases/README.md)
 
-The OpenAPI 3.1 document is served by a running instance at
-`/api/v1/openapi.json`. Repository Agent Skills live under `src/skills/` and do
-not contain production credentials. The documented local-only test account is
-created with `npm run seed:test-user`; see
-`docs/operations/local-development.md`.
+The OpenAPI 3.1 document is served by a running instance at `/api/v1/openapi.json`.

@@ -34,7 +34,10 @@ describe("MCP access context", () => {
   it("publishes the bounded meal-planning tool catalog over Streamable HTTP", async () => {
     const response = await handleMcpRequest(
       mcpRequest("tools/list", 1),
-      { DB: {} as D1Database } as CloudflareEnvironment,
+      {
+        MONGODB_GATEWAY_URL: "https://mongo-gateway.example.test",
+        MONGODB_GATEWAY_SERVICE_TOKEN: "test-service-token",
+      } as unknown as CloudflareEnvironment,
       access,
     );
 

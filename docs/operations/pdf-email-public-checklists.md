@@ -4,10 +4,10 @@ Date: 2026-07-17
 
 ## Local Development
 
-Apply the latest migration and run the application:
+Apply the MongoDB schema definitions and run the application:
 
 ```bash
-npm run db:migrate:local
+npm run gateway:migrate:local
 npm run dev
 ```
 
@@ -36,7 +36,7 @@ Each cloud environment requires:
 - Email Service send binding `EMAIL`.
 - Queue producer `EMAIL_DELIVERY_QUEUE` and matching consumer.
 - A dead-letter Queue.
-- D1 migration `0006_pdf_email_public_checklists.sql`.
+- Current MongoDB collections, validators, and indexes from `npm run gateway:migrate`.
 - A verified `EMAIL_FROM` domain and fixed `PUBLIC_APP_URL`.
 
 Provision the queues using the commands in `cloudflare-deployment.md`. Browser
@@ -63,7 +63,7 @@ include flags. Combined export verifies that the list belongs to the plan.
 Email is restricted to the authenticated user's account email. Limits are five
 deliveries per user per hour and twenty per household per day. The Queue message
 temporarily carries the raw capability because only its SHA-256 hash is stored
-in D1. Queue bodies and raw links must never be logged.
+in MongoDB. Queue bodies and raw links must never be logged.
 
 The email URL puts the raw capability in the fragment. `/shared/shopping`
 removes it from browser history and exchanges it in a POST body for an HttpOnly,

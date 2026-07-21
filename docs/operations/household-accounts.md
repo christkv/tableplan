@@ -1,67 +1,31 @@
-# Household Accounts
+# Household accounts
 
-## Local Workflow
+Household accounts, Better Auth users/sessions, memberships, and invitation state are stored in MongoDB through the gateway.
 
-Apply migrations and start the app:
+## Local workflow
 
-```bash
-npm run db:migrate:local
-npm run dev
-```
+Start the existing local MongoDB service, run `npm run gateway:migrate:local`, then start the gateway and app. Sign in as an owner, open `/settings`, and send an invitation. With `EMAIL_MODE=capture`, no external email is sent; open the returned single-use link in a private browser.
 
-Sign in as a household owner, open `/settings`, and use **Send invite**. Local
-`EMAIL_MODE=capture` sends no external message. Settings shows the single-use
-link only in the action result; open it in a signed-out/private browser window.
-The recipient enters a name, username, and password and is redirected into the
-shared household.
+Existing accounts are directed to sign in. The authenticated email must match the invitation. A user may belong to multiple households and switch the active household in Settings.
 
-If the email already has a Tableplan account, the join page directs that user to
-sign in and returns to the pending invitation. It never resets an existing
-password. The authenticated email must match the invitation.
-If that account already belongs to another household, Settings shows an active
-household selector so the user can switch between memberships.
+## Cloud workflow
 
-## Cloud Delivery
+Preview and production use the environment's email Queue and fixed `PUBLIC_APP_URL`. Invitation links are never derived from an untrusted Host header.
 
-Preview and production use the existing `EMAIL_DELIVERY_QUEUE`, `EMAIL`,
-`EMAIL_FROM`, `EMAIL_MODE=cloud`, and fixed `PUBLIC_APP_URL` configuration.
-The queue consumer dispatches both shopping-list and household-invitation
-messages. Invitation links are always built from `PUBLIC_APP_URL`, never the
-request Host header. Verify the sender domain and arbitrary-recipient support
-before inviting external addresses.
-
-Deploy in this order:
+Deploy gateway schema changes before the Worker:
 
 ```bash
+npm run gateway:migrate
 npm run check
-npm run db:migrate:preview
 npm run deploy:preview
 ```
 
-Create an invitation in preview, confirm `delivery_status` reaches `sent`, open
-the message in a logged-out mobile browser, finish account setup, and verify that
-the recipient sees the inviter's household data. Repeat the link and expect the
-unavailable state.
+Test delivery, single use, expiration, revocation, reinvitation, email mismatch, and cross-household isolation.
 
-## Lifecycle and Recovery
+## Security
 
-- Invitations expire seven days after creation.
-- Reinviting the same household/email revokes its previous pending link.
-- Owners can revoke pending invitations from Settings.
-- Cloud delivery failures set `delivery_status=failed` and retain a bounded
-  error message. Queue delivery retries up to the configured consumer limit.
-- A failed account-creation request leaves the invitation pending. If Better
-  Auth created the account before a later membership write failed, sign in with
-  that account and retry the same invitation.
-- D1 schema changes are forward-fixed; do not roll back migration `0007` by
-  dropping membership data.
-
-## Security Checks
-
-- Never paste an invitation link into logs, tickets, analytics, or screenshots.
-- D1 must contain only `token_hash` and `token_prefix`, not the raw token.
-- Keep `BETTER_AUTH_SECRET` distinct per environment.
-- Confirm public join responses include no-store, no-referrer, no-index, CSP,
-  and frame-denial headers.
-- Do not label or expose restricted/read-only members until every write path
-  enforces that policy.
+- Invitations expire after seven days.
+- Reinviting the same household/email revokes the earlier pending link.
+- MongoDB stores only token hashes and short diagnostic prefixes, never raw invitation tokens.
+- Keep `BETTER_AUTH_SECRET`, gateway tokens, and MongoDB credentials distinct per environment.
+- Public join responses must remain no-store/no-referrer/no-index with CSP and frame denial.

@@ -26,7 +26,7 @@ services:
       GATEWAY_HOST: 0.0.0.0
       GATEWAY_PORT: 8788
       MONGODB_URI: mongodb://mongodb:27017/?replicaSet=rs0
-      MONGODB_DATABASE: meal_planner_local
+      MONGODB_DATABASE: application_local
       MONGODB_GATEWAY_SERVICE_TOKEN: local-gateway-token-change-me-1234567890
       GATEWAY_MAX_IN_FLIGHT: 100
       BETTER_AUTH_URL: http://127.0.0.1:5173

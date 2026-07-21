@@ -4,7 +4,7 @@ const integer = (fallback: number) => z.coerce.number().int().positive().default
 
 const gatewayConfigSchema = z.object({
   MONGODB_URI: z.string().min(1),
-  MONGODB_DATABASE: z.string().min(1).default("meal_planner"),
+  MONGODB_DATABASE: z.string().min(1).default("application_local"),
   MONGODB_GATEWAY_SERVICE_TOKEN: z.string().min(32),
   GATEWAY_HOST: z.string().default("127.0.0.1"),
   GATEWAY_PORT: z.coerce.number().int().min(1).max(65535).default(8788),
@@ -27,9 +27,23 @@ const gatewayConfigSchema = z.object({
 export type GatewayConfig = z.infer<typeof gatewayConfigSchema>;
 
 export function loadGatewayConfig(environment: NodeJS.ProcessEnv): GatewayConfig {
-  const config = gatewayConfigSchema.parse(environment);
+  const appEnv = environment.APP_ENV ?? "local";
+  const expectedDatabase = appEnv === "preview"
+    ? "application_preview"
+    : appEnv === "production"
+      ? "application"
+      : appEnv === "local"
+        ? "application_local"
+        : undefined;
+  const config = gatewayConfigSchema.parse({
+    ...environment,
+    ...(environment.MONGODB_DATABASE ? {} : { MONGODB_DATABASE: expectedDatabase ?? "application_local" }),
+  });
   if (config.MONGODB_MIN_POOL_SIZE > config.MONGODB_MAX_POOL_SIZE) {
     throw new Error("MONGODB_MIN_POOL_SIZE cannot exceed MONGODB_MAX_POOL_SIZE");
+  }
+  if (expectedDatabase && config.MONGODB_DATABASE !== expectedDatabase) {
+    throw new Error(`${config.APP_ENV} must use MongoDB database ${expectedDatabase}`);
   }
   if (config.APP_ENV !== "local" && config.BETTER_AUTH_SECRET.startsWith("local-only-secret")) throw new Error("BETTER_AUTH_SECRET is required outside local development");
   return config;

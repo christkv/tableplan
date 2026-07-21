@@ -1,23 +1,24 @@
-# Import Command Reference
+# Import command reference
 
-All generated data belongs under `.import/`, which is ignored by Git.
+Local bounded run:
 
 ```bash
-npm run import -- analyze data/recipes_ingredients.csv
-npm run import -- sample data/recipes_ingredients.csv --rows 5000 --out .import/sample.sqlite
-npm run import -- stage data/recipes_ingredients.csv --out .import/stage.sqlite
-npm run import -- normalize .import/stage.sqlite
-npm run import -- qa .import/stage.sqlite --out .import/reports/full
-npm run import -- export-sql .import/stage.sqlite --out .import/sql
-npm run import -- apply-local .import/sql
-npm run import -- apply-remote .import/sql --env preview --confirm
+MONGODB_URI='mongodb://127.0.0.1:27017/?directConnection=true' npm run import -- \
+  data/recipes_ingredients.csv --database application_local --limit 5000 --batch-size 500
 ```
 
-The source hash must remain constant across stage, QA, and export. A valid run
-must reconcile `rowsSeen = rowsImported + rowsRejected`; duplicate source IDs
-are rejected and reported. Review issue classes, unresolved ingredients,
-servings outliers, foreign keys, and FTS counts before application.
+Preview full run:
 
-Remote apply requires the explicit `--confirm` flag and configured Wrangler
-resources. Production also requires a reviewed preview run, license/provenance
-approval, capacity review, and a recovery snapshot or rebuild procedure.
+```bash
+MONGODB_URI='<preview-import-uri>' npm run import -- \
+  data/recipes_ingredients.csv --database application_preview --batch-size 500
+```
+
+Production full run:
+
+```bash
+MONGODB_URI='<production-import-uri>' npm run import -- \
+  data/recipes_ingredients.csv --database application --batch-size 500 --allow-production
+```
+
+Review the source hash, status, checkpoint, imported/rejected counts, issue classes, catalog count, representative documents, and application search. Repeating the same source resumes its deterministic run.

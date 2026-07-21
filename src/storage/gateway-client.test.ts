@@ -32,6 +32,26 @@ describe("MongoGatewayStorageClient", () => {
     });
   });
 
+  it("invokes fetch without rebinding its receiver for the Workers runtime", async () => {
+    const fetcher = vi.fn(async function (this: unknown, _input: RequestInfo | URL, init?: RequestInit) {
+      expect(this).toBeUndefined();
+      const request = JSON.parse(String(init?.body)) as { requestId: string };
+      return Response.json({
+        contractVersion: STORAGE_CONTRACT_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        result: { status: "ok", backend: "mongodb-gateway", latencyMs: 1 },
+      });
+    }) as unknown as typeof fetch;
+    const client = new MongoGatewayStorageClient({
+      baseUrl: "https://mongo-gateway.example.com",
+      serviceToken: "test-service-token",
+      fetcher,
+    });
+
+    await expect(client.health()).resolves.toMatchObject({ status: "ok" });
+  });
+
   it("rejects an invalid or mismatched gateway response", async () => {
     const fetcher = vi.fn(async () => Response.json({
       contractVersion: STORAGE_CONTRACT_VERSION,

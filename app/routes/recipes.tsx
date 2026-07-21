@@ -285,7 +285,7 @@ export default function Recipes({ loaderData, actionData }: Route.ComponentProps
           <AlertCircle size={22} />
           <div>
             <h2>The local catalog is not loaded yet</h2>
-            <p>Run <code>npm run db:migrate:local</code> followed by <code>npm run import:sample</code>.</p>
+            <p>Start the MongoDB gateway, run <code>npm run gateway:migrate</code>, then run <code>npm run import:sample</code>.</p>
             {import.meta.env.DEV ? <details><summary>Database detail</summary><pre>{unavailable}</pre></details> : null}
           </div>
         </section>

@@ -89,19 +89,3 @@ export async function processShoppingEmail(env: ShoppingEmailEnvironment, messag
     throw error;
   }
 }
-
-export async function markEmailDeliveryFailed(db: D1Database, deliveryId: string, error: unknown) {
-  const message = error instanceof Error ? error.message.slice(0, 500) : "Email delivery failed";
-  await db.prepare(`UPDATE email_deliveries SET status='failed', last_error_code='delivery_failed', last_error_message=?,
-    updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(message, deliveryId).run();
-}
-
-export async function getEmailDelivery(db: D1Database, householdId: string, userId: string, deliveryId: string) {
-  const row = await db.prepare(`SELECT id, shopping_list_id, share_id, recipient_email, status, attempt_count, last_error_message,
-    queued_at, sent_at, created_at FROM email_deliveries WHERE id=? AND household_id=? AND user_id=?`)
-    .bind(deliveryId, householdId, userId).first<{
-      id: string; shopping_list_id: string; share_id: string; recipient_email: string; status: string; attempt_count: number;
-      last_error_message: string | null; queued_at: string | null; sent_at: string | null; created_at: string;
-    }>();
-  return row ? { id: row.id, shoppingListId: row.shopping_list_id, shareId: row.share_id, recipientEmail: row.recipient_email, status: row.status, attemptCount: row.attempt_count, lastError: row.last_error_message, queuedAt: row.queued_at, sentAt: row.sent_at, createdAt: row.created_at } : null;
-}

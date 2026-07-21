@@ -23,9 +23,9 @@ meal plan references it.
   `RecipeIngestionWorkflow`. The workflow reads the owned R2 object, uses
   Workers AI `toMarkdown` only to convert PDF/DOCX/ODT sources, and sends text
   or a private image directly to the operation's OpenRouter model chain. The
-  workflow stores a schema-constrained D1 review draft and reports progress to
+  workflow stores a schema-constrained MongoDB review draft and reports progress to
   the Agent.
-- D1 is authoritative for ownership, job status, review data, recipes, aliases,
+- MongoDB is authoritative for ownership, job status, review data, recipes, aliases,
   and audit events. R2 stores original private source bytes.
 
 ## OpenRouter Configuration
@@ -110,20 +110,18 @@ a public URL.
 
 ## Database and Recovery
 
-Apply migration `0004_private_recipe_ingestion.sql` in each environment before
-deploying code that creates jobs:
+Apply the MongoDB schema/index definitions in each environment before deploying
+code that creates jobs:
 
 ```bash
-npm run db:migrate:local
-npm run db:migrate:preview
-npm run db:migrate:production
+npm run gateway:migrate:local
 ```
 
 Inspect recent local jobs:
 
 ```bash
-npx wrangler d1 execute DB --local --command \
-  "SELECT id, input_kind, status, progress_message, error_code, created_at FROM recipe_ingestions ORDER BY created_at DESC LIMIT 20"
+mongosh 'mongodb://127.0.0.1:27017/application_local?directConnection=true' \
+  --eval 'db.recipe_ingestions.find({}, {status:1, progressMessage:1, errorCode:1, createdAt:1}).sort({createdAt:-1}).limit(20).toArray()'
 ```
 
 A failed workflow can be diagnosed from the job error fields and Worker logs.

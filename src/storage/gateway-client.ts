@@ -100,7 +100,8 @@ export class MongoGatewayStorageClient implements StorageClient {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
-      const response = await this.fetcher(`${this.baseUrl}/v1/rpc`, {
+      const fetcher = this.fetcher;
+      const response = await fetcher(`${this.baseUrl}/v1/rpc`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${this.serviceToken}`,
@@ -132,7 +133,8 @@ export class MongoGatewayStorageClient implements StorageClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await this.fetcher(`${this.baseUrl}/v1/rpc`, {
+      const fetcher = this.fetcher;
+      const response = await fetcher(`${this.baseUrl}/v1/rpc`, {
         method: "POST",
         headers: { authorization: `Bearer ${this.serviceToken}`, "content-type": "application/json", "x-request-id": requestId },
         body: JSON.stringify({ contractVersion: STORAGE_CONTRACT_VERSION, requestId, deadlineAt: Date.now() + this.timeoutMs, operation, input }),

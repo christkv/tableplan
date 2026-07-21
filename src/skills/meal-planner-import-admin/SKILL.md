@@ -1,42 +1,18 @@
 ---
 name: meal-planner-import-admin
-description: Run, diagnose, and review the Tableplan CSV recipe import pipeline, including deterministic sampling, local SQLite staging, parse QA, D1 SQL export, and guarded remote application. Use for catalog refreshes, importer failures, data-quality audits, or production import preparation.
+description: Run, diagnose, and review the Tableplan raw CSV to MongoDB catalog importer, including bounded sample runs, resumable full imports, issue review, and guarded production application.
 ---
 
-# Tableplan Import Administration
+# Tableplan import administration
 
-Treat imports as an auditable data operation. Read
-`references/import-operations.md` and the repository's
-`docs/operations/recipe-import.md` before running a full or remote import.
+Read `references/import-operations.md` and `docs/operations/recipe-import.md` before a full import.
 
-## Development Workflow
+1. Verify the source CSV without modifying it.
+2. Confirm the exact MongoDB URI and database: `application_local`, `application_preview`, or `application`.
+3. Run MongoDB schema/index migration first.
+4. Use a bounded local/preview run and review `import_runs` plus `import_issues`.
+5. Resume with the same source/run rather than starting an unrelated run after interruption.
+6. Exercise UI, REST, MCP, planning, and shopping smoke tests.
+7. Require `--allow-production`, backups, capacity approval, and a release record for `application`.
 
-1. Verify that `data/recipes_ingredients.csv` exists and do not modify it.
-2. Run `npm run import:sample` for routine development.
-3. Review the run summary and `.import/reports/` output.
-4. Run `npm run check` after importer or schema changes.
-5. Query local D1 counts and a known recipe before declaring the import usable.
-
-## Full Import Workflow
-
-1. Run `analyze` and record the source SHA-256 hash.
-2. Run `stage` into a new local SQLite path.
-3. Run `normalize` and `qa`; review rejected and duplicate source IDs,
-   unresolved units, repaired lists, foreign keys, and FTS coverage.
-4. Stop if the report does not reconcile source rows to accepted plus rejected
-   rows.
-5. Run `export-sql` and retain its checksummed manifest.
-6. Apply to local D1, then a clean preview D1.
-7. Exercise UI, REST, MCP, planning, and shopping-list smoke tests.
-8. Apply remotely only after explicit environment confirmation and a reviewed
-   recovery plan.
-
-## Guardrails
-
-- Never edit or replace the source CSV.
-- Never apply to production as a side effect of staging or QA.
-- Never use production credentials in commands recorded in documentation.
-- Do not suppress rejected-row or duplicate-ID findings.
-- Preserve raw source strings when normalized parsing is partial.
-- Do not populate embeddings until relational and FTS checks pass.
-
+Never edit the source CSV, suppress rejection findings, expose credentials, or run production as a side effect of QA.

@@ -1,6 +1,6 @@
 import type { Route } from "./+types/api.public.shopping.exchange";
 import { cloudflareContext } from "../context";
-import { createShareCookie, publicSecurityHeaders, resolveShoppingShare } from "../../src/sharing/shopping-share";
+import { createShareCookie, publicSecurityHeaders } from "../../src/sharing/shopping-share";
 import { createStorageClient } from "../../src/storage";
 
 export async function action({ request, context }: Route.ActionArgs) {

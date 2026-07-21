@@ -11,7 +11,7 @@ import type { HouseholdInvitationEmailRecord, HouseholdInvitationView, Household
 
 export const STORAGE_CONTRACT_VERSION = "2026-07-21.1" as const;
 
-export const storageBackendSchema = z.enum(["d1", "mongodb-gateway"]);
+export const storageBackendSchema = z.literal("mongodb-gateway");
 export type StorageBackend = z.infer<typeof storageBackendSchema>;
 
 export const storageHealthSchema = z.object({

@@ -10,7 +10,7 @@ export async function loader({ context }: Route.LoaderArgs) {
   } catch {
     health = {
       status: "unavailable" as const,
-      backend: String(env.STORAGE_BACKEND) === "mongodb-gateway" ? "mongodb-gateway" as const : "d1" as const,
+      backend: "mongodb-gateway" as const,
       latencyMs: 0,
       errorCode: "storage_configuration_invalid",
     };
@@ -21,6 +21,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     database: available ? "ok" : "unavailable",
     storageBackend: health.backend,
     storageLatencyMs: Math.round(health.latencyMs * 100) / 100,
+    storageErrorCode: health.errorCode ?? null,
     storageContractVersion: STORAGE_CONTRACT_VERSION,
     environment: env.APP_ENV,
     timestamp: new Date().toISOString(),
