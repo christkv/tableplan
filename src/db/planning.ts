@@ -1,34 +1,6 @@
 import { addDays } from "../domain/planning/dates";
-
-export interface MealPlanItemView {
-  id: string;
-  recipeId: string;
-  recipeName: string;
-  plannedDate: string;
-  mealSlot: string;
-  servings: number;
-  notes: string | null;
-}
-
-export interface MealPlanView {
-  id: string;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-  items: MealPlanItemView[];
-}
-
-export interface MealPlanItemContext {
-  itemId: string;
-  planId: string;
-  planName: string;
-  startsOn: string;
-  endsOn: string;
-  recipeId: string;
-  plannedDate: string;
-  mealSlot: string;
-  servings: number;
-}
+import { MealPlanCopyError, parsePlannedServings, shiftPlannedDate, type MealPlanItemContext, type MealPlanView } from "../domain/planning/meal-plans";
+export { MealPlanCopyError, parsePlannedServings, resolvePlannedServingUpdate, shiftPlannedDate, type MealPlanItemContext, type MealPlanItemView, type MealPlanView } from "../domain/planning/meal-plans";
 
 export async function getMealPlan(db: D1Database, householdId: string, startsOn: string, endsOn: string): Promise<MealPlanView | null> {
   const plan = await db.prepare("SELECT id, name, starts_on, ends_on FROM meal_plans WHERE household_id = ? AND starts_on = ? AND ends_on = ? ORDER BY created_at DESC LIMIT 1")
@@ -109,19 +81,6 @@ export async function removeMealPlanItem(db: D1Database, householdId: string, it
   return item.plan_id;
 }
 
-export function parsePlannedServings(value: unknown): number {
-  const servings = Number(value);
-  if (!Number.isFinite(servings) || servings < 0.25 || servings > 100) throw new Error("Servings must be between 0.25 and 100");
-  return servings;
-}
-
-export function resolvePlannedServingUpdate(currentValue: unknown, requestedValue: unknown, adjustment: unknown): number {
-  const current = parsePlannedServings(currentValue);
-  if (adjustment === "decrease") return Math.max(0.25, current - (current < 1 ? 0.25 : 1));
-  if (adjustment === "increase") return Math.min(100, current + (current < 1 ? 0.25 : 1));
-  return parsePlannedServings(requestedValue);
-}
-
 export async function updateMealPlanItemServings(db: D1Database, input: { householdId: string; itemId: string; servings: number }) {
   const servings = parsePlannedServings(input.servings);
   const item = await db.prepare(`SELECT mpi.meal_plan_id AS plan_id FROM meal_plan_items mpi JOIN meal_plans mp ON mp.id=mpi.meal_plan_id
@@ -130,21 +89,6 @@ export async function updateMealPlanItemServings(db: D1Database, input: { househ
   await db.prepare("UPDATE meal_plan_items SET servings=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND meal_plan_id=?")
     .bind(String(servings), input.itemId, item.plan_id).run();
   return item.plan_id;
-}
-
-export class MealPlanCopyError extends Error {
-  constructor(public readonly code: "source_empty" | "target_not_empty", message: string) {
-    super(message);
-    this.name = "MealPlanCopyError";
-  }
-}
-
-export function shiftPlannedDate(plannedDate: string, sourceStartsOn: string, targetStartsOn: string): string {
-  const source = new Date(`${sourceStartsOn}T00:00:00Z`);
-  const date = new Date(`${plannedDate}T00:00:00Z`);
-  const dayOffset = Math.round((date.getTime() - source.getTime()) / 86_400_000);
-  if (!Number.isInteger(dayOffset) || dayOffset < 0 || dayOffset > 6) throw new Error("Plan item date is outside the source week");
-  return addDays(targetStartsOn, dayOffset);
 }
 
 export async function copyMealPlanWeek(db: D1Database, input: {

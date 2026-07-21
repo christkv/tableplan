@@ -1,17 +1,7 @@
-import { normalizeRecipeSearch, recipeSearchUrl } from "../domain/recipe-search";
-import type { RecipeSearchInput, RecipeSearchScope, RecipeTagMatch } from "../domain/recipes";
-
-export interface SavedRecipeSearch {
-  id: string;
-  name: string;
-  query: string;
-  ingredient: string;
-  tags: string[];
-  tagMatch: RecipeTagMatch;
-  scope: RecipeSearchScope;
-  createdAt: string;
-  updatedAt: string;
-}
+import { normalizeRecipeSearch } from "../domain/recipe-search";
+import type { RecipeSearchInput } from "../domain/recipes";
+import { normalizeSavedSearchName, savedRecipeSearchUrl, type SavedRecipeSearch } from "../domain/saved-searches";
+export { normalizeSavedSearchName, savedRecipeSearchUrl, type SavedRecipeSearch } from "../domain/saved-searches";
 
 interface SavedRecipeSearchRow {
   id: string;
@@ -46,17 +36,6 @@ function toSavedSearch(row: SavedRecipeSearchRow): SavedRecipeSearch {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-export function normalizeSavedSearchName(value: unknown): string {
-  const name = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
-  if (!name) throw new Error("Saved search name is required");
-  if (name.length > 80) throw new Error("Saved search name must be 80 characters or fewer");
-  return name;
-}
-
-export function savedRecipeSearchUrl(search: Pick<SavedRecipeSearch, "query" | "ingredient" | "tags" | "tagMatch" | "scope">): string {
-  return recipeSearchUrl(search);
 }
 
 export async function listSavedRecipeSearches(db: D1Database, householdId: string): Promise<SavedRecipeSearch[]> {

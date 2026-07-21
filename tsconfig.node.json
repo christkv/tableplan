@@ -3,9 +3,14 @@
   "include": [
     "vite.config.ts",
     "vitest.config.ts",
+    "gateway/**/*",
     "scripts/**/*",
+    "src/storage/contract.ts",
+    "src/domain/**/*",
     "src/domain/quantity/**/*",
-    "src/import/**/*"
+    "src/import/**/*",
+    "src/ingestion/extract.ts",
+    "src/ingestion/types.ts"
   ],
   "compilerOptions": {
     "composite": true,

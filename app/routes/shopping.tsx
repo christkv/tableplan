@@ -7,27 +7,28 @@ import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
 import { addDays, startOfIsoWeek } from "../../src/domain/planning/dates";
 import { formatNumber } from "../../src/domain/quantity/format";
-import { generateShoppingList, getLatestShoppingList, toggleShoppingItem } from "../../src/db/shopping";
-import { getMeasurementSystem } from "../../src/db/preferences";
+import { createStorageClient } from "../../src/storage";
 import { queueShoppingListEmail } from "../../src/email/shopping-email";
-import { createShoppingShare, listShoppingShares, parseShareExpiryDays, revokeShoppingShare } from "../../src/sharing/shopping-share";
+import { parseShareExpiryDays } from "../../src/domain/shopping-share";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const url = new URL(request.url);
-  const measurementSystem = await getMeasurementSystem(env.DB, session.user.id, session.householdId);
-  const list = await getLatestShoppingList(env.DB, session.householdId, measurementSystem);
-  return { list, shares: list ? await listShoppingShares(env.DB, session.householdId, list.id) : [], measurementSystem, userEmail: session.user.email, planId: url.searchParams.get("plan"), week: url.searchParams.get("week") };
+  const measurementSystem = await createStorageClient(env).getMeasurementSystem(session.user.id, session.householdId);
+  const list = await createStorageClient(env).getLatestShoppingList({ userId: session.user.id, householdId: session.householdId }, measurementSystem);
+  const access = { userId: session.user.id, householdId: session.householdId };
+  return { list, shares: list ? await createStorageClient(env).listShoppingShares(access, list.id) : [], measurementSystem, userEmail: session.user.email, planId: url.searchParams.get("plan"), week: url.searchParams.get("week") };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const formData = await request.formData();
+  const storage = createStorageClient(env); const access = { userId: session.user.id, householdId: session.householdId };
   const intent = String(formData.get("intent") ?? "generate");
   if (intent === "toggle") {
-    await toggleShoppingItem(env.DB, session.householdId, String(formData.get("itemId")), formData.get("checked") !== "true");
+    await storage.toggleShoppingItem(access, String(formData.get("itemId")), formData.get("checked") !== "true");
   } else if (intent === "email" || intent === "share") {
     const listId = String(formData.get("listId"));
     const expiresInDays = parseShareExpiryDays(formData.get("expiresInDays"));
@@ -35,15 +36,15 @@ export async function action({ request, context }: Route.ActionArgs) {
       const result = await queueShoppingListEmail(env, { householdId: session.householdId, userId: session.user.id, listId, recipientEmail: session.user.email, expiresInDays });
       return data({ intent, ...result, message: env.EMAIL_MODE === "cloud" ? `Shopping list queued for ${session.user.email}.` : `Email captured locally for ${session.user.email}.` });
     }
-    const share = await createShoppingShare(env.DB, { householdId: session.householdId, userId: session.user.id, listId, expiresInDays });
+    const share = await storage.createShoppingShare({ householdId: session.householdId, userId: session.user.id, listId, expiresInDays });
     const baseUrl = (env.PUBLIC_APP_URL ?? env.BETTER_AUTH_URL).replace(/\/$/, "");
     return data({ intent, shareId: share.id, shareUrl: `${baseUrl}/shared/shopping#access=${encodeURIComponent(share.token)}`, expiresAt: share.expiresAt, message: "Store checklist link created." });
   } else if (intent === "revoke") {
-    await revokeShoppingShare(env.DB, session.householdId, String(formData.get("listId")), String(formData.get("shareId")));
+    await storage.revokeShoppingShare(access, String(formData.get("listId")), String(formData.get("shareId")));
   } else {
     const start = startOfIsoWeek(String(formData.get("week")));
-    const measurementSystem = await getMeasurementSystem(env.DB, session.user.id, session.householdId);
-    await generateShoppingList(env.DB, { householdId: session.householdId, planId: String(formData.get("planId")), startsOn: start, endsOn: addDays(start, 6), userId: session.user.id, measurementSystem });
+    const measurementSystem = await createStorageClient(env).getMeasurementSystem(session.user.id, session.householdId);
+    await storage.generateShoppingList({ householdId: session.householdId, planId: String(formData.get("planId")), startsOn: start, endsOn: addDays(start, 6), userId: session.user.id, measurementSystem });
   }
   return redirect("/shopping");
 }

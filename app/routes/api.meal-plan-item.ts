@@ -1,8 +1,8 @@
 import type { Route } from "./+types/api.meal-plan-item";
 import { cloudflareContext } from "../context";
 import { requireApiScope } from "../../src/auth/api-keys";
-import { parsePlannedServings, updateMealPlanItemServings } from "../../src/db/planning";
-import { refreshShoppingListForPlan } from "../../src/db/shopping";
+import { parsePlannedServings } from "../../src/domain/planning/meal-plans";
+import { createStorageClient } from "../../src/storage";
 
 export async function action({ params, request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
@@ -11,8 +11,9 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   try {
     const body = await request.json<{ servings?: unknown }>();
     const servings = parsePlannedServings(body.servings);
-    const planId = await updateMealPlanItemServings(env.DB, { householdId: access.householdId, itemId: params.itemId, servings });
-    const shoppingListId = await refreshShoppingListForPlan(env.DB, access.householdId, planId);
+    const storage = createStorageClient(env);
+    const planId = await storage.updateMealPlanItemServings({ householdId: access.householdId, userId: access.userId, itemId: params.itemId, servings });
+    const shoppingListId = await storage.refreshShoppingListForPlan(access, planId);
     return Response.json({ itemId: params.itemId, planId, servings, shoppingListId });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Meal plan item could not be updated";

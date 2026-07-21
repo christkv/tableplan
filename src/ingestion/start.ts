@@ -1,7 +1,7 @@
 import type { RecipeIngestionAgent } from "../../workers/recipe-ingestion";
 import { assertRecipeExtractionAvailable } from "./config";
 import { extractRecipeFromText } from "./extract";
-import { attachSourceArtifact, createRecipeIngestion, saveIngestionDraft, updateIngestionStatus } from "./service";
+import { createStorageClient } from "../storage";
 import type { RecipeInputKind } from "./types";
 import { createLogger } from "../observability/logger";
 
@@ -12,10 +12,11 @@ export async function sha256Hex(body: ArrayBuffer): Promise<string> {
 
 export async function startTextRecipeIngestion(env: CloudflareEnvironment, input: { userId: string; householdId: string; text: string; origin?: "manual" | "paste"; filename?: string }) {
   const log = createLogger(env, "recipe-ingestion-request");
+  const storage = createStorageClient(env);
   assertRecipeExtractionAvailable(env, "text");
   const body = new TextEncoder().encode(input.text).buffer;
   const inputKind: RecipeInputKind = "text";
-  const ingestionId = await createRecipeIngestion(env.DB, { userId: input.userId, householdId: input.householdId, inputKind, origin: input.origin ?? "paste", filename: input.filename, mediaType: "text/plain" });
+  const ingestionId = await storage.createRecipeIngestion({ userId: input.userId, householdId: input.householdId, inputKind, origin: input.origin ?? "paste", filename: input.filename, mediaType: "text/plain" });
   log.info("ingestion.created", {
     ingestionId,
     inputKind,
@@ -25,13 +26,13 @@ export async function startTextRecipeIngestion(env: CloudflareEnvironment, input
   });
   const key = `households/${input.householdId}/users/${input.userId}/recipe-ingestions/${ingestionId}/source`;
   await env.PRIVATE_RECIPE_ASSETS.put(key, body, { httpMetadata: { contentType: "text/plain" }, customMetadata: { ingestionId } });
-  await attachSourceArtifact(env.DB, { ingestionId, key, filename: input.filename, mediaType: "text/plain", byteSize: body.byteLength, sha256: await sha256Hex(body) });
+  await storage.attachRecipeSourceArtifact({ ingestionId, key, filename: input.filename, mediaType: "text/plain", byteSize: body.byteLength, sha256: await sha256Hex(body) });
   log.debug("source.stored", { ingestionId, mediaType: "text/plain", byteSize: body.byteLength });
   if (env.RECIPE_EXTRACTION_PROVIDER === "local") {
     log.debug("local.extraction.started", { ingestionId });
-    await updateIngestionStatus(env.DB, ingestionId, "extracting", "Parsing recipe text");
+    await storage.updateRecipeIngestionStatus(ingestionId, "extracting", "Parsing recipe text");
     const draft = extractRecipeFromText(input.text, input.filename);
-    await saveIngestionDraft(env.DB, ingestionId, input.householdId, draft);
+    await storage.saveRecipeIngestionDraft(ingestionId, input.householdId, draft);
     log.info("local.extraction.complete", { ingestionId, ingredientCount: draft.ingredients.length, stepCount: draft.steps.length });
   } else {
     const { getAgentByName } = await import("agents");

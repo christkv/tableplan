@@ -1,4 +1,5 @@
 import { escapeHtml } from "../exports/render";
+import { createStorageClient } from "../storage";
 
 export interface HouseholdInvitationEmailQueueMessage {
   kind: "household-invitation";
@@ -27,38 +28,25 @@ export function renderHouseholdInvitationEmail(input: {
 }
 
 export async function processHouseholdInvitationEmail(env: CloudflareEnvironment, message: HouseholdInvitationEmailQueueMessage) {
-  const invitation = await env.DB.prepare(`SELECT hi.id, hi.invited_email, hi.relationship, hi.expires_at, hi.delivery_status,
-      hi.delivery_attempt_count, h.name household_name, u.name inviter_name
-    FROM household_invitations hi JOIN households h ON h.id=hi.household_id JOIN "user" u ON u.id=hi.invited_by_user_id
-    WHERE hi.id=?`).bind(message.invitationId).first<{
-      id: string;
-      invited_email: string;
-      relationship: string;
-      expires_at: string;
-      delivery_status: string;
-      delivery_attempt_count: number;
-      household_name: string;
-      inviter_name: string;
-    }>();
-  if (!invitation || invitation.delivery_status === "sent") return;
-  await env.DB.prepare(`UPDATE household_invitations SET delivery_status='sending', delivery_attempt_count=delivery_attempt_count+1,
-    updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(invitation.id).run();
+  const storage = createStorageClient(env);
+  const invitation = await storage.claimHouseholdInvitationEmail(message.invitationId);
+  if (!invitation) return;
   try {
     const baseUrl = (env.PUBLIC_APP_URL ?? env.BETTER_AUTH_URL).replace(/\/$/, "");
     const invitationUrl = `${baseUrl}/household/join#invite=${encodeURIComponent(message.rawToken)}`;
     const content = renderHouseholdInvitationEmail({
-      householdName: invitation.household_name,
-      inviterName: invitation.inviter_name,
+      householdName: invitation.householdName,
+      inviterName: invitation.inviterName,
       relationship: invitation.relationship,
       invitationUrl,
-      expiresAt: invitation.expires_at,
+      expiresAt: invitation.expiresAt,
     });
     let providerMessageId = `capture-${invitation.id}`;
     if (env.EMAIL_MODE === "cloud") {
       if (!env.EMAIL || !env.EMAIL_FROM) throw new Error("Cloudflare email binding is not configured");
       const sent = await env.EMAIL.send({
         from: env.EMAIL_FROM,
-        to: invitation.invited_email,
+        to: invitation.email,
         subject: content.subject,
         html: content.html,
         text: content.text,
@@ -66,12 +54,10 @@ export async function processHouseholdInvitationEmail(env: CloudflareEnvironment
       });
       providerMessageId = sent.messageId;
     }
-    await env.DB.prepare(`UPDATE household_invitations SET delivery_status='sent', provider_message_id=?, sent_at=CURRENT_TIMESTAMP,
-      delivery_error=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(providerMessageId, invitation.id).run();
+    await storage.updateHouseholdInvitationDelivery(invitation.id, "sent", { providerMessageId });
   } catch (error) {
     const messageText = error instanceof Error ? error.message.slice(0, 500) : "Invitation email delivery failed";
-    await env.DB.prepare(`UPDATE household_invitations SET delivery_status='failed', delivery_error=?,
-      updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(messageText, invitation.id).run();
+    await storage.updateHouseholdInvitationDelivery(invitation.id, "failed", { error: messageText });
     throw error;
   }
 }

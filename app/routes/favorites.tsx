@@ -5,12 +5,12 @@ import type { Route } from "./+types/favorites";
 import { Badge } from "~/components/ui/badge";
 import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
-import { listFavorites } from "../../src/db/favorites";
+import { createStorageClient } from "../../src/storage";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
-  return { recipes: await listFavorites(env.DB, { userId: session.user.id, householdId: session.householdId }) };
+  return { recipes: await createStorageClient(env).listFavorites({ userId: session.user.id, householdId: session.householdId }) };
 }
 
 export default function Favorites({ loaderData }: Route.ComponentProps) {

@@ -8,30 +8,30 @@ import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
 import { addDays, startOfIsoWeek, weekDates } from "../../src/domain/planning/dates";
 import { withMealPlanSelection } from "../../src/domain/planning/selection";
-import { getRecipe } from "../../src/db/recipes";
-import { getMealPlanSlots } from "../../src/db/preferences";
-import { addMealPlanItem, copyMealPlanWeek, ensureMealPlan, getMealPlan, parsePlannedServings, removeMealPlanItem, updateMealPlanItemServings } from "../../src/db/planning";
-import { refreshShoppingListForPlan } from "../../src/db/shopping";
+import { createStorageClient } from "../../src/storage";
+import { parsePlannedServings } from "../../src/domain/planning/meal-plans";
 
 const legacySlotLabel = (id: string) => id.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
+  const storage = createStorageClient(env);
   const url = new URL(request.url);
   const start = startOfIsoWeek(url.searchParams.get("week") ?? new Date());
   const end = addDays(start, 6);
   const dates = weekDates(start);
   const previousStart = addDays(start, -7);
   const addRecipeId = url.searchParams.get("add");
+  const access = { userId: session.user.id, householdId: session.householdId };
   const requestedServings = Number(url.searchParams.get("servings"));
   const requestedDate = url.searchParams.get("date");
   const requestedSlot = url.searchParams.get("slot");
   const [plan, previousPlan, addRecipe, configuredSlots] = await Promise.all([
-    getMealPlan(env.DB, session.householdId, start, end),
-    getMealPlan(env.DB, session.householdId, previousStart, addDays(previousStart, 6)),
-    addRecipeId ? getRecipe(env.DB, addRecipeId, { userId: session.user.id, householdId: session.householdId }) : null,
-    getMealPlanSlots(env.DB, session.householdId),
+    storage.getMealPlan(access, start, end),
+    storage.getMealPlan(access, previousStart, addDays(previousStart, 6)),
+    addRecipeId ? storage.getRecipe(addRecipeId, { userId: session.user.id, householdId: session.householdId }) : null,
+    storage.getMealPlanSlots({ userId: session.user.id, householdId: session.householdId }),
   ]);
   const configuredIds = new Set(configuredSlots.map((slot) => slot.id));
   const legacySlots = [...new Set((plan?.items ?? []).map((item) => item.mealSlot))]
@@ -56,36 +56,37 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const data = await request.formData();
+  const storage = createStorageClient(env); const access = { userId: session.user.id, householdId: session.householdId };
   const start = startOfIsoWeek(String(data.get("week")));
   if (data.get("intent") === "copy-previous") {
-    const copied = await copyMealPlanWeek(env.DB, {
+    const copied = await storage.copyMealPlanWeek({
       householdId: session.householdId,
       userId: session.user.id,
       sourceStartsOn: addDays(start, -7),
       targetStartsOn: start,
       timezone: "UTC",
     });
-    await refreshShoppingListForPlan(env.DB, session.householdId, copied.planId);
+    await storage.refreshShoppingListForPlan(access, copied.planId);
     return redirect(`/plan?week=${start}&cloned=${copied.itemCount}`);
   } else if (data.get("intent") === "remove") {
-    const planId = await removeMealPlanItem(env.DB, session.householdId, String(data.get("itemId")));
-    if (planId) await refreshShoppingListForPlan(env.DB, session.householdId, planId);
+    const planId = await storage.removeMealPlanItem(access, String(data.get("itemId")));
+    if (planId) await storage.refreshShoppingListForPlan(access, planId);
   } else if (data.get("intent") === "update-servings") {
-    const planId = await updateMealPlanItemServings(env.DB, { householdId: session.householdId, itemId: String(data.get("itemId")), servings: parsePlannedServings(data.get("servings")) });
-    await refreshShoppingListForPlan(env.DB, session.householdId, planId);
+    const planId = await storage.updateMealPlanItemServings({ householdId: session.householdId, userId: session.user.id, itemId: String(data.get("itemId")), servings: parsePlannedServings(data.get("servings")) });
+    await storage.refreshShoppingListForPlan(access, planId);
   } else {
     const date = String(data.get("date"));
     if (!weekDates(start).includes(date)) throw new Response("Date is outside this week", { status: 400 });
     const slot = String(data.get("slot"));
-    const configuredSlots = await getMealPlanSlots(env.DB, session.householdId);
+    const configuredSlots = await createStorageClient(env).getMealPlanSlots({ userId: session.user.id, householdId: session.householdId });
     if (!configuredSlots.some((definition) => definition.id === slot)) throw new Response("Meal section is not configured for this household", { status: 400 });
     const servings = parsePlannedServings(data.get("servings"));
-    const recipe = await getRecipe(env.DB, String(data.get("recipeId")), { userId: session.user.id, householdId: session.householdId });
+    const recipe = await createStorageClient(env).getRecipe(String(data.get("recipeId")), { userId: session.user.id, householdId: session.householdId });
     if (!recipe) throw new Response("Recipe not found", { status: 404 });
     if (recipe.visibility === "user_private") throw new Response("Share this recipe with the household before adding it to a meal plan", { status: 409 });
-    const planId = await ensureMealPlan(env.DB, { householdId: session.householdId, startsOn: start, endsOn: addDays(start, 6), timezone: "UTC", userId: session.user.id });
-    await addMealPlanItem(env.DB, { householdId: session.householdId, planId, recipeId: String(data.get("recipeId")), date, slot, servings });
-    await refreshShoppingListForPlan(env.DB, session.householdId, planId);
+    const planId = await storage.ensureMealPlan({ householdId: session.householdId, startsOn: start, endsOn: addDays(start, 6), timezone: "UTC", userId: session.user.id });
+    await storage.addMealPlanItem({ householdId: session.householdId, userId: session.user.id, planId, recipeId: String(data.get("recipeId")), date, slot, servings });
+    await storage.refreshShoppingListForPlan(access, planId);
   }
   return redirect(`/plan?week=${start}`);
 }

@@ -3,7 +3,7 @@ import { AgentWorkflow, type AgentWorkflowStep } from "agents/workflows";
 import type { WorkflowEvent } from "cloudflare:workers";
 
 import { extractRecipeWithOpenRouter } from "../src/ingestion/openrouter";
-import { saveIngestionDraft, updateIngestionStatus } from "../src/ingestion/service";
+import { createStorageClient } from "../src/storage";
 import type { RecipeDraft } from "../src/ingestion/types";
 import { createLogger, errorLogContext, type Logger } from "../src/observability/logger";
 
@@ -66,21 +66,19 @@ export class RecipeIngestionAgent extends Agent<CloudflareEnvironment, Ingestion
       workflowId,
       ...errorLogContext(error),
     });
-    if (this.state.ingestionId) await updateIngestionStatus(this.env.DB, this.state.ingestionId, "failed", "Extraction failed", { code: "workflow_failed", message: error });
+    if (this.state.ingestionId) await createStorageClient(this.env).updateRecipeIngestionStatus(this.state.ingestionId, "failed", "Extraction failed", { code: "workflow_failed", message: error });
   }
 }
 
 async function extractWithOpenRouter(env: CloudflareEnvironment, ingestionId: string, log: Logger): Promise<{ draft: RecipeDraft; model: string }> {
   log.debug("source.lookup.started", { ingestionId });
-  const artifact = await env.DB.prepare(`SELECT a.r2_key, a.filename, a.media_type, j.household_id FROM recipe_source_artifacts a
-    JOIN recipe_ingestions j ON j.id=a.ingestion_id WHERE a.ingestion_id=?`).bind(ingestionId)
-    .first<{ r2_key: string; filename: string | null; media_type: string; household_id: string }>();
+  const artifact = await createStorageClient(env).getRecipeSourceArtifact(ingestionId);
   if (!artifact) throw new Error("Source artifact not found");
-  const object = await env.PRIVATE_RECIPE_ASSETS.get(artifact.r2_key);
+  const object = await env.PRIVATE_RECIPE_ASSETS.get(artifact.key);
   if (!object) throw new Error("Source artifact is unavailable");
   const bytes = await object.arrayBuffer();
-  const operation = artifact.media_type.startsWith("image/") ? "vision" : "text";
-  log.debug("source.loaded", { ingestionId, mediaType: artifact.media_type, byteSize: bytes.byteLength, operation });
+  const operation = artifact.mediaType.startsWith("image/") ? "vision" : "text";
+  log.debug("source.loaded", { ingestionId, mediaType: artifact.mediaType, byteSize: bytes.byteLength, operation });
   const secrets = env as unknown as OpenRouterSecrets;
   const commonConfig = {
     apiKey: secrets.OPENROUTER_API_KEY ?? "",
@@ -91,7 +89,7 @@ async function extractWithOpenRouter(env: CloudflareEnvironment, ingestionId: st
   const model = operation === "vision" ? env.OPENROUTER_VISION_MODEL : env.OPENROUTER_TEXT_MODEL;
   const fallbackModels = operation === "vision" ? env.OPENROUTER_VISION_FALLBACK_MODELS : env.OPENROUTER_TEXT_FALLBACK_MODELS;
   const input = operation === "vision"
-    ? { kind: "image" as const, bytes, mediaType: artifact.media_type }
+    ? { kind: "image" as const, bytes, mediaType: artifact.mediaType }
     : { kind: "text" as const, source: await sourceText(env, artifact, bytes, log, ingestionId) };
   log.info("model.extraction.started", {
     ingestionId,
@@ -120,18 +118,18 @@ async function extractWithOpenRouter(env: CloudflareEnvironment, ingestionId: st
 
 async function sourceText(
   env: CloudflareEnvironment,
-  artifact: { filename: string | null; media_type: string },
+  artifact: { filename: string | null; mediaType: string },
   bytes: ArrayBuffer,
   log: Logger,
   ingestionId: string,
 ): Promise<string> {
-  const blob = new Blob([bytes], { type: artifact.media_type });
-  if (artifact.media_type.startsWith("text/")) {
+  const blob = new Blob([bytes], { type: artifact.mediaType });
+  if (artifact.mediaType.startsWith("text/")) {
     const text = await blob.text();
     log.debug("source.text.ready", { ingestionId, characterCount: text.length });
     return text;
   }
-  log.info("source.document.conversion.started", { ingestionId, mediaType: artifact.media_type, byteSize: bytes.byteLength });
+  log.info("source.document.conversion.started", { ingestionId, mediaType: artifact.mediaType, byteSize: bytes.byteLength });
   const converted = await env.AI.toMarkdown({ name: artifact.filename ?? "recipe", blob });
   if (converted.format === "error") throw new Error(converted.error);
   log.info("source.document.conversion.complete", { ingestionId, characterCount: converted.data.length });
@@ -147,15 +145,15 @@ export class RecipeIngestionWorkflow extends AgentWorkflow<RecipeIngestionAgent,
       await this.reportProgress({ step: "extract", status: "running", message: "Reading recipe source", percent: 0.1 });
       await step.do("mark extraction running", async () => {
         log.debug("status.extraction.started", { ingestionId });
-        await updateIngestionStatus(this.env.DB, ingestionId, "extracting", "Reading recipe source");
+        await createStorageClient(this.env).updateRecipeIngestionStatus(ingestionId, "extracting", "Reading recipe source");
       });
       const extraction = await step.do("extract recipe with OpenRouter", async () => extractWithOpenRouter(this.env, ingestionId, log));
       await this.reportProgress({ step: "map", status: "running", message: "Matching ingredients", percent: 0.75 });
       await step.do("save draft and ingredient mappings", async () => {
         log.debug("draft.save.started", { ingestionId });
-        const job = await this.env.DB.prepare("SELECT household_id FROM recipe_ingestions WHERE id=?").bind(ingestionId).first<{ household_id: string }>();
+        const job = await createStorageClient(this.env).getRecipeSourceArtifact(ingestionId);
         if (!job) throw new Error("Ingestion job not found");
-        await saveIngestionDraft(this.env.DB, ingestionId, job.household_id, extraction.draft, "openrouter", extraction.model);
+        await createStorageClient(this.env).saveRecipeIngestionDraft(ingestionId, job.householdId, extraction.draft, "openrouter", extraction.model);
         log.debug("draft.save.complete", { ingestionId, model: extraction.model });
       });
       await this.reportProgress({ step: "review", status: "complete", message: "Ready for review", percent: 1 });

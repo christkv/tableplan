@@ -2,8 +2,8 @@ import type { Route } from "./+types/api.meal-plans.clone";
 import { cloudflareContext } from "../context";
 import { requireApiScope } from "../../src/auth/api-keys";
 import { addDays, startOfIsoWeek } from "../../src/domain/planning/dates";
-import { copyMealPlanWeek, MealPlanCopyError } from "../../src/db/planning";
-import { refreshShoppingListForPlan } from "../../src/db/shopping";
+import { MealPlanCopyError } from "../../src/domain/planning/meal-plans";
+import { createStorageClient } from "../../src/storage";
 
 export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
@@ -12,14 +12,15 @@ export async function action({ request, context }: Route.ActionArgs) {
   try {
     const body = await request.json<{ targetWeek: string }>();
     const targetStartsOn = startOfIsoWeek(body.targetWeek);
-    const copied = await copyMealPlanWeek(env.DB, {
+    const storage = createStorageClient(env);
+    const copied = await storage.copyMealPlanWeek({
       householdId: access.householdId,
       userId: access.userId,
       sourceStartsOn: addDays(targetStartsOn, -7),
       targetStartsOn,
       timezone: "UTC",
     });
-    await refreshShoppingListForPlan(env.DB, access.householdId, copied.planId);
+    await storage.refreshShoppingListForPlan(access, copied.planId);
     return Response.json({ ...copied, week: targetStartsOn }, { status: 201 });
   } catch (error) {
     if (error instanceof MealPlanCopyError) return Response.json({ code: error.code, message: error.message }, { status: 409 });

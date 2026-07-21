@@ -1,0 +1,7 @@
+node_modules
+build
+.git
+.wrangler
+.import
+.dev.vars
+*.log

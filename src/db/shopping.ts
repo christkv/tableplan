@@ -2,17 +2,8 @@ import { aggregateIngredients } from "../domain/quantity/aggregate";
 import { displayQuantity } from "../domain/quantity/display";
 import type { AggregatedIngredient, MeasurementSystem } from "../domain/quantity/types";
 import { findUnit } from "../domain/quantity/units";
-
-export interface ShoppingItemView {
-  id: string; name: string; quantityMin: string | null; quantityMax: string | null; unitId: string | null;
-  checked: boolean; unresolved: boolean; sources: Array<{ recipeId: string; recipeName: string; rawLine: string }>;
-}
-
-export interface ShoppingListPlanView { id: string; name: string; startsOn: string; endsOn: string; mealCount: number }
-export interface ShoppingListView {
-  id: string; name: string; measurementSystem: MeasurementSystem; generatedAt: string; updatedAt: string;
-  plan: ShoppingListPlanView | null; items: ShoppingItemView[];
-}
+import type { ShoppingListView } from "../domain/shopping";
+export type { ShoppingItemView, ShoppingListPlanView, ShoppingListView } from "../domain/shopping";
 
 interface ShoppingListRow {
   id: string; name: string; measurement_system: MeasurementSystem; created_at: string; updated_at: string;

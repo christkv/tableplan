@@ -4,17 +4,18 @@ import { data, useFetcher } from "react-router";
 import type { Route } from "./+types/shared-shopping";
 import { cloudflareContext } from "../context";
 import { formatNumber } from "../../src/domain/quantity/format";
-import { getPublicShoppingList, publicSecurityHeaders, readShareCookie, resolveShoppingShare, togglePublicShoppingItem } from "../../src/sharing/shopping-share";
+import { publicSecurityHeaders, readShareCookie } from "../../src/sharing/shopping-share";
+import { createStorageClient } from "../../src/storage";
 
 export function headers() { return publicSecurityHeaders(); }
 
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
-  const share = await resolveShoppingShare(env.DB, readShareCookie(request) ?? "", params.shareId);
+  const storage = createStorageClient(env); const share = await storage.resolveShoppingShare(readShareCookie(request) ?? "", params.shareId);
   if (!share) throw new Response("This checklist link has expired or was revoked.", { status: 410, headers: publicSecurityHeaders() });
-  const list = await getPublicShoppingList(env.DB, share);
+  const list = await storage.getPublicShoppingList(share);
   if (!list) throw new Response("This checklist is no longer available.", { status: 410, headers: publicSecurityHeaders() });
-  ctx.waitUntil(env.DB.prepare("UPDATE shopping_list_shares SET last_accessed_at=CURRENT_TIMESTAMP WHERE id=?").bind(share.id).run().then(() => undefined));
+  ctx.waitUntil(storage.touchShoppingShare(share.id));
   return data({ list, shareId: share.id }, { headers: publicSecurityHeaders() });
 }
 
@@ -22,12 +23,12 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   const { env } = context.get(cloudflareContext);
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) throw new Response("Invalid request origin", { status: 403 });
-  const share = await resolveShoppingShare(env.DB, readShareCookie(request) ?? "", params.shareId);
+  const storage = createStorageClient(env); const share = await storage.resolveShoppingShare(readShareCookie(request) ?? "", params.shareId);
   if (!share) throw new Response("This checklist link has expired or was revoked.", { status: 410 });
   const form = await request.formData();
   const itemId = String(form.get("itemId") ?? "");
   const checked = form.get("checked") === "true";
-  if (!await togglePublicShoppingItem(env.DB, share, itemId, checked)) throw new Response("Shopping item not found", { status: 404 });
+  if (!await storage.togglePublicShoppingItem(share, itemId, checked)) throw new Response("Shopping item not found", { status: 404 });
   return { itemId, checked };
 }
 

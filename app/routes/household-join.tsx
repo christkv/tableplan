@@ -8,22 +8,21 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { authClient } from "~/lib/auth-client";
 import { cloudflareContext } from "../context";
-import { createAuth } from "../../src/auth/server";
+import { getAuthSession, handleAuthRequest } from "../../src/auth/server";
 import {
-  acceptHouseholdInvitation,
   clearInvitationCookie,
   invitationSecurityHeaders,
   readInvitationCookie,
-  resolveHouseholdInvitation,
 } from "../../src/households/invitations";
+import { createStorageClient } from "../../src/storage";
 
 export function headers() { return invitationSecurityHeaders(); }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const token = readInvitationCookie(request);
-  const invitation = token ? await resolveHouseholdInvitation(env.DB, token) : null;
-  const session = await createAuth(env, ctx).api.getSession({ headers: request.headers });
+  const invitation = token ? await createStorageClient(env).resolveHouseholdInvitation(token) : null;
+  const session = await getAuthSession(request, env, ctx);
   return {
     invitation,
     user: session ? { id: session.user.id, name: session.user.name, email: session.user.email } : null,
@@ -40,14 +39,14 @@ export async function action({ request, context }: Route.ActionArgs) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return data({ error: "Invalid request origin." }, { status: 403 });
   const token = readInvitationCookie(request);
-  const invitation = token ? await resolveHouseholdInvitation(env.DB, token) : null;
+  const storage = createStorageClient(env);
+  const invitation = token ? await storage.resolveHouseholdInvitation(token) : null;
   if (!invitation) return data({ error: "This invitation has expired or was already used." }, { status: 410 });
   const form = await request.formData();
-  const auth = createAuth(env, ctx);
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getAuthSession(request, env, ctx);
   try {
     if (session) {
-      await acceptHouseholdInvitation(env.DB, invitation, session.user);
+      await storage.acceptHouseholdInvitation(invitation, session.user);
       const responseHeaders = new Headers();
       responseHeaders.append("Set-Cookie", clearInvitationCookie(env.APP_ENV !== "local"));
       return redirect("/recipes?joined=household", { headers: responseHeaders });
@@ -63,15 +62,13 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (username.length < 3 || username.length > 32) return data({ error: "Username must be 3 to 32 characters." }, { status: 400 });
     if (password.length < 8 || password.length > 128) return data({ error: "Password must be 8 to 128 characters." }, { status: 400 });
     if (password !== confirmPassword) return data({ error: "Passwords do not match." }, { status: 400 });
-    const created = await auth.api.signUpEmail({
-      returnHeaders: true,
-      headers: request.headers,
-      body: { name, email: invitation.email, username, password },
-    });
-    if (!created.response.user) throw new Error("The account could not be created.");
-    await acceptHouseholdInvitation(env.DB, invitation, created.response.user);
+    const signupHeaders = new Headers(request.headers); signupHeaders.set("content-type", "application/json");
+    const signupResponse = await handleAuthRequest(new Request(new URL("/api/auth/sign-up/email", request.url), { method: "POST", headers: signupHeaders, body: JSON.stringify({ name, email: invitation.email, username, password }) }), env, ctx);
+    const created = await signupResponse.json() as { user?: { id: string; email: string }; message?: string };
+    if (!signupResponse.ok || !created.user) throw new Error(created.message ?? "The account could not be created.");
+    await storage.acceptHouseholdInvitation(invitation, created.user);
     const responseHeaders = new Headers();
-    for (const cookie of created.headers.getSetCookie()) responseHeaders.append("Set-Cookie", cookie);
+    for (const cookie of signupResponse.headers.getSetCookie()) responseHeaders.append("Set-Cookie", cookie);
     responseHeaders.append("Set-Cookie", clearInvitationCookie(env.APP_ENV !== "local"));
     return redirect("/recipes?joined=household", { headers: responseHeaders });
   } catch (error) {

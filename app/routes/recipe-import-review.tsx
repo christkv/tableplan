@@ -8,15 +8,16 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
-import { getRecipeIngestion, listIngredientCandidates, publishRecipeDraft, updateIngestionStatus } from "../../src/ingestion/service";
+import { createStorageClient } from "../../src/storage";
 import type { RecipeDraft } from "../../src/ingestion/types";
 
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
-  const ingestion = await getRecipeIngestion(env.DB, params.ingestionId, { userId: session.user.id, householdId: session.householdId });
+  const storage = createStorageClient(env);
+  const ingestion = await storage.getRecipeIngestion(params.ingestionId, { userId: session.user.id, householdId: session.householdId });
   if (!ingestion) throw new Response("Recipe import not found", { status: 404 });
-  const candidates = ingestion.ingredientReviews.length ? await Promise.all(ingestion.ingredientReviews.map((item) => listIngredientCandidates(env.DB, item.parsedName))) : [];
+  const candidates = ingestion.ingredientReviews.length ? await Promise.all(ingestion.ingredientReviews.map((item) => storage.listIngredientCandidates(item.parsedName))) : [];
   return { ingestion, candidates };
 }
 
@@ -29,10 +30,11 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const session = await requireRequestSession(request, env, ctx);
   const data = await request.formData();
   const access = { userId: session.user.id, householdId: session.householdId };
-  const ingestion = await getRecipeIngestion(env.DB, params.ingestionId, access);
+  const storage = createStorageClient(env);
+  const ingestion = await storage.getRecipeIngestion(params.ingestionId, access);
   if (!ingestion) throw new Response("Recipe import not found", { status: 404 });
   if (data.get("intent") === "cancel") {
-    await updateIngestionStatus(env.DB, ingestion.id, "cancelled", "Import cancelled");
+    await storage.updateRecipeIngestionStatus(ingestion.id, "cancelled", "Import cancelled");
     return redirect("/recipes?scope=mine");
   }
   const draft: RecipeDraft = {
@@ -42,7 +44,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     tags: String(data.get("tags") ?? "").split(",").map((item) => item.trim()).filter(Boolean), warnings: ingestion.draft?.warnings ?? [],
   };
   try {
-    const recipeId = await publishRecipeDraft(env.DB, {
+    const recipeId = await storage.publishRecipeDraft({
       ingestionId: ingestion.id, userId: session.user.id, householdId: session.householdId,
       visibility: data.get("visibility") === "household" ? "household" : "user_private", draft,
       ingredientSelections: draft.ingredients.map((_, position) => ({

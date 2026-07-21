@@ -8,7 +8,7 @@ import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
 import { recipeExtractionAvailability } from "../../src/ingestion/config";
 import { extractRecipeFromText } from "../../src/ingestion/extract";
-import { attachSourceArtifact, createRecipeIngestion, saveIngestionDraft, updateIngestionStatus } from "../../src/ingestion/service";
+import { createStorageClient } from "../../src/storage";
 import type { RecipeInputKind } from "../../src/ingestion/types";
 import { RECIPE_UPLOAD_ACCEPT, recipeInputKindForMediaType, resolveRecipeUploadMediaType } from "../../src/ingestion/upload";
 import { createLogger } from "../../src/observability/logger";
@@ -32,6 +32,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const log = createLogger(env, "recipe-ingestion-request");
   const session = await requireRequestSession(request, env, ctx);
+  const storage = createStorageClient(env);
   const data = await request.formData();
   const mode = data.get("mode") === "upload" ? "upload" : "paste";
   const submittedFile = data.get("file");
@@ -49,7 +50,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const availability = recipeExtractionAvailability(env, inputKind);
   if (!availability.available) return { error: availability.message };
 
-  const ingestionId = await createRecipeIngestion(env.DB, {
+  const ingestionId = await storage.createRecipeIngestion({
     userId: session.user.id, householdId: session.householdId, inputKind, origin: mode, filename: file?.name, mediaType,
   });
   log.info("ingestion.created", {
@@ -62,14 +63,14 @@ export async function action({ request, context }: Route.ActionArgs) {
   });
   const key = `households/${session.householdId}/users/${session.user.id}/recipe-ingestions/${ingestionId}/source`;
   await env.PRIVATE_RECIPE_ASSETS.put(key, body, { httpMetadata: { contentType: mediaType }, customMetadata: { ingestionId } });
-  await attachSourceArtifact(env.DB, { ingestionId, key, filename: file?.name, mediaType, byteSize: body.byteLength, sha256: hex(await crypto.subtle.digest("SHA-256", body)) });
+  await storage.attachRecipeSourceArtifact({ ingestionId, key, filename: file?.name, mediaType, byteSize: body.byteLength, sha256: hex(await crypto.subtle.digest("SHA-256", body)) });
   log.debug("source.stored", { ingestionId, mediaType, byteSize: body.byteLength });
 
   if (env.RECIPE_EXTRACTION_PROVIDER === "local") {
     log.debug("local.extraction.started", { ingestionId });
-    await updateIngestionStatus(env.DB, ingestionId, "extracting", "Parsing recipe text");
+    await storage.updateRecipeIngestionStatus(ingestionId, "extracting", "Parsing recipe text");
     const draft = extractRecipeFromText(new TextDecoder().decode(body), file?.name);
-    await saveIngestionDraft(env.DB, ingestionId, session.householdId, draft);
+    await storage.saveRecipeIngestionDraft(ingestionId, session.householdId, draft);
     log.info("local.extraction.complete", { ingestionId, ingredientCount: draft.ingredients.length, stepCount: draft.steps.length });
   } else {
     const { getAgentByName } = await import("agents");

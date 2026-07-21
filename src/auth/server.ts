@@ -2,6 +2,7 @@ import { dash } from "@better-auth/infra";
 import { betterAuth } from "better-auth";
 import { username } from "better-auth/plugins/username";
 import { redirect } from "react-router";
+import { createStorageClient } from "../storage";
 
 interface AuthEnvironment {
   BETTER_AUTH_API_KEY?: string;
@@ -44,11 +45,11 @@ export function createAuth(env: CloudflareEnvironment, ctx: ExecutionContext) {
     socialProviders: google,
     plugins: [
       username({ minUsernameLength: 3, maxUsernameLength: 32 }),
-      ...(authEnv.BETTER_AUTH_API_KEY
-        ? [dash({ apiKey: authEnv.BETTER_AUTH_API_KEY })]
-        : []),
+      // Dash ownership validation must exist before onboarding issues an API key.
+      dash({ apiKey: authEnv.BETTER_AUTH_API_KEY }),
     ],
     advanced: {
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
       backgroundTasks: {
         handler: (promise) => ctx.waitUntil(promise),
       },
@@ -57,6 +58,38 @@ export function createAuth(env: CloudflareEnvironment, ctx: ExecutionContext) {
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+type AuthSession = Awaited<ReturnType<Auth["api"]["getSession"]>>;
+
+function usesMongoGateway(env: CloudflareEnvironment): boolean {
+  return (env as unknown as { STORAGE_BACKEND?: string }).STORAGE_BACKEND === "mongodb-gateway";
+}
+
+function gatewayUrl(env: CloudflareEnvironment, requestUrl: string): string {
+  const value = (env as unknown as { MONGODB_GATEWAY_URL?: string }).MONGODB_GATEWAY_URL;
+  if (!value) throw new Error("MONGODB_GATEWAY_URL is required for gateway-backed authentication");
+  const source = new URL(requestUrl); const target = new URL(value);
+  target.pathname = source.pathname; target.search = source.search;
+  return target.toString();
+}
+
+export async function handleAuthRequest(request: Request, env: CloudflareEnvironment, ctx: ExecutionContext): Promise<Response> {
+  if (!usesMongoGateway(env)) return createAuth(env, ctx).handler(request);
+  const headers = new Headers(request.headers); headers.delete("host");
+  headers.set("x-forwarded-origin", new URL(request.url).origin);
+  const serviceToken = (env as unknown as { MONGODB_GATEWAY_SERVICE_TOKEN?: string }).MONGODB_GATEWAY_SERVICE_TOKEN;
+  if (!serviceToken) throw new Error("MONGODB_GATEWAY_SERVICE_TOKEN is required for gateway-backed authentication");
+  headers.set("x-tableplan-service-token", `Bearer ${serviceToken}`);
+  return fetch(new Request(gatewayUrl(env, request.url), { method: request.method, headers, body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body, redirect: "manual", duplex: request.method === "GET" || request.method === "HEAD" ? undefined : "half" } as RequestInit));
+}
+
+export async function getAuthSession(request: Request, env: CloudflareEnvironment, ctx: ExecutionContext): Promise<AuthSession> {
+  if (!usesMongoGateway(env)) return createAuth(env, ctx).api.getSession({ headers: request.headers });
+  const sessionRequest = new Request(new URL("/api/auth/get-session", request.url), { headers: request.headers });
+  const response = await handleAuthRequest(sessionRequest, env, ctx);
+  if (!response.ok) return null;
+  return await response.json() as AuthSession;
+}
 
 export async function ensureUserHousehold(db: D1Database, user: { id: string; name: string }) {
   const preferred = await db.prepare(`SELECT up.default_household_id household_id FROM user_profiles up
@@ -89,10 +122,9 @@ export async function ensureUserHousehold(db: D1Database, user: { id: string; na
 }
 
 export async function getRequestSession(request: Request, env: CloudflareEnvironment, ctx: ExecutionContext) {
-  const auth = createAuth(env, ctx);
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getAuthSession(request, env, ctx);
   if (!session) return null;
-  const householdId = await ensureUserHousehold(env.DB, session.user);
+  const householdId = await createStorageClient(env).ensureUserHousehold(session.user);
   return { ...session, householdId };
 }
 

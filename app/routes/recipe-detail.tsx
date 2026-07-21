@@ -6,30 +6,27 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cloudflareContext } from "../context";
-import { isFavorite, setFavorite } from "../../src/db/favorites";
-import { getRecipe } from "../../src/db/recipes";
-import { setRecipeVisibility } from "../../src/ingestion/service";
+import { createStorageClient } from "../../src/storage";
 import { requireRequestSession } from "../../src/auth/server";
-import { getMealPlanSlots, getMeasurementSystem } from "../../src/db/preferences";
 import { displayIngredientLine, resolveServingScale } from "../../src/domain/quantity/display";
 import { readMealPlanSelection, withMealPlanSelection, type MealPlanSelection } from "../../src/domain/planning/selection";
-import { getMealPlanItemContext, resolvePlannedServingUpdate, updateMealPlanItemServings } from "../../src/db/planning";
-import { refreshShoppingListForPlan } from "../../src/db/shopping";
+import { resolvePlannedServingUpdate } from "../../src/domain/planning/meal-plans";
 
 export async function loader({ params, context, request }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const access = { userId: session.user.id, householdId: session.householdId };
-  const recipe = await getRecipe(env.DB, params.recipeId, access);
+  const storage = createStorageClient(env);
+  const recipe = await storage.getRecipe(params.recipeId, access);
   if (!recipe) throw new Response("Recipe not found", { status: 404 });
   const url = new URL(request.url);
   const planSelection = readMealPlanSelection(url.searchParams);
   const requestedPlanItem = url.searchParams.get("planItem") ?? "";
   const [favorite, measurementSystem, mealSlots, planContext] = await Promise.all([
-    isFavorite(env.DB, session.user.id, recipe.id),
-    getMeasurementSystem(env.DB, session.user.id, session.householdId),
-    getMealPlanSlots(env.DB, session.householdId),
-    requestedPlanItem ? getMealPlanItemContext(env.DB, session.householdId, requestedPlanItem, recipe.id) : null,
+    storage.isFavorite(session.user.id, recipe.id),
+    storage.getMeasurementSystem(session.user.id, session.householdId),
+    storage.getMealPlanSlots(access),
+    requestedPlanItem ? storage.getMealPlanItemContext(access, requestedPlanItem, recipe.id) : null,
   ]);
   const serving = resolveServingScale(recipe.servings, planContext?.servings ?? url.searchParams.get("servings"));
   const slotId = planContext?.mealSlot ?? planSelection?.slot;
@@ -51,18 +48,19 @@ export async function action({ params, context, request }: Route.ActionArgs) {
   const session = await requireRequestSession(request, env, ctx);
   const data = await request.formData();
   const access = { userId: session.user.id, householdId: session.householdId };
+  const storage = createStorageClient(env);
   if (data.get("intent") === "update-planned-servings") {
     const itemId = String(data.get("planItem") ?? "");
-    const planContext = await getMealPlanItemContext(env.DB, session.householdId, itemId, params.recipeId);
+    const planContext = await storage.getMealPlanItemContext(access, itemId, params.recipeId);
     if (!planContext) throw new Response("Meal plan entry not found", { status: 404 });
     const servings = resolvePlannedServingUpdate(planContext.servings, data.get("servings"), data.get("adjustment"));
-    const planId = await updateMealPlanItemServings(env.DB, { householdId: session.householdId, itemId, servings });
-    await refreshShoppingListForPlan(env.DB, session.householdId, planId);
+    const planId = await storage.updateMealPlanItemServings({ householdId: session.householdId, userId: session.user.id, itemId, servings });
+    await storage.refreshShoppingListForPlan(access, planId);
     return redirect(`/recipes/${params.recipeId}?planItem=${encodeURIComponent(itemId)}&planServings=updated`);
   }
   if (data.get("intent") === "visibility") {
-    await setRecipeVisibility(env.DB, params.recipeId, access, data.get("visibility") === "household" ? "household" : "user_private");
-  } else await setFavorite(env.DB, access, params.recipeId, data.get("favorite") === "true");
+    await storage.setRecipeVisibility(params.recipeId, access, data.get("visibility") === "household" ? "household" : "user_private");
+  } else await storage.setFavorite(access, params.recipeId, data.get("favorite") === "true");
   const planItem = String(data.get("planItem") ?? "");
   const servings = String(data.get("servings") ?? "");
   const detailPath = `/recipes/${params.recipeId}${planItem ? `?planItem=${encodeURIComponent(planItem)}` : servings ? `?servings=${encodeURIComponent(servings)}` : ""}`;

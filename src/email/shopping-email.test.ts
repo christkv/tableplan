@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ShoppingListView } from "../db/shopping";
+import type { ShoppingListView } from "../domain/shopping";
 import { renderShoppingEmail } from "./shopping-email";
 
 describe("shopping-list email", () => {

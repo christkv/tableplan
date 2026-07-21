@@ -1,70 +1,10 @@
 import { processHouseholdInvitationEmail, type HouseholdInvitationEmailQueueMessage } from "../email/household-invitation-email";
+import { HouseholdInvitationError, INVITATION_LIFETIME_DAYS, hashInvitationToken, householdInviteRoles, householdRelationships, normalizeInvitationEmail, parseHouseholdInviteRole, parseHouseholdRelationship, randomInvitationToken, type HouseholdInvitationView, type HouseholdInviteRole, type HouseholdRelationship } from "../domain/households";
+import { createStorageClient } from "../storage";
+export { HouseholdInvitationError, hashInvitationToken, householdInviteRoles, householdRelationships, normalizeInvitationEmail, parseHouseholdInviteRole, parseHouseholdRelationship, randomInvitationToken } from "../domain/households";
+export type { HouseholdInvitationView, HouseholdInviteRole, HouseholdRelationship } from "../domain/households";
 
-const encoder = new TextEncoder();
 const INVITATION_COOKIE = "tableplan_household_invite";
-const INVITATION_LIFETIME_DAYS = 7;
-
-export const householdRelationships = ["spouse", "child", "flatmate", "other"] as const;
-export type HouseholdRelationship = typeof householdRelationships[number];
-export const householdInviteRoles = ["adult"] as const;
-export type HouseholdInviteRole = typeof householdInviteRoles[number];
-
-export class HouseholdInvitationError extends Error {
-  constructor(public readonly code: string, message: string) {
-    super(message);
-    this.name = "HouseholdInvitationError";
-  }
-}
-
-export function normalizeInvitationEmail(value: unknown): string {
-  const email = String(value ?? "").trim().toLowerCase();
-  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new HouseholdInvitationError("invalid_email", "Enter a valid email address.");
-  }
-  return email;
-}
-
-export function parseHouseholdRelationship(value: unknown): HouseholdRelationship {
-  const relationship = String(value ?? "other") as HouseholdRelationship;
-  if (!householdRelationships.includes(relationship)) {
-    throw new HouseholdInvitationError("invalid_relationship", "Choose a valid household relationship.");
-  }
-  return relationship;
-}
-
-export function parseHouseholdInviteRole(value: unknown): HouseholdInviteRole {
-  const role = String(value ?? "adult") as HouseholdInviteRole;
-  if (!householdInviteRoles.includes(role)) {
-    throw new HouseholdInvitationError("invalid_role", "Invited accounts must be household members.");
-  }
-  return role;
-}
-
-export function randomInvitationToken(bytes = 32): string {
-  const value = crypto.getRandomValues(new Uint8Array(bytes));
-  let binary = "";
-  for (const byte of value) binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-}
-
-export async function hashInvitationToken(token: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(token));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export interface HouseholdInvitationView {
-  id: string;
-  householdId: string;
-  householdName: string;
-  email: string;
-  relationship: HouseholdRelationship;
-  role: HouseholdInviteRole;
-  inviterName: string;
-  expiresAt: string;
-  createdAt: string;
-  deliveryStatus: string;
-  existingAccount: boolean;
-}
 
 interface InvitationRow {
   id: string;
@@ -166,36 +106,21 @@ export async function createHouseholdInvitation(env: CloudflareEnvironment, inpu
   role: unknown;
   localBaseUrl?: string;
 }) {
-  await requireHouseholdOwner(env.DB, input.householdId, input.invitedByUserId);
   const email = normalizeInvitationEmail(input.email);
   const relationship = parseHouseholdRelationship(input.relationship);
   const role = parseHouseholdInviteRole(input.role);
-  const existingMember = await env.DB.prepare(`SELECT hm.user_id FROM household_members hm JOIN "user" u ON u.id=hm.user_id
-    WHERE hm.household_id=? AND lower(u.email)=?`).bind(input.householdId, email).first();
-  if (existingMember) throw new HouseholdInvitationError("already_a_member", "That email already belongs to this household.");
-  const [inviterRecent, householdRecent] = await Promise.all([
-    env.DB.prepare("SELECT COUNT(*) count FROM household_invitations WHERE invited_by_user_id=? AND created_at>=datetime('now','-1 hour')")
-      .bind(input.invitedByUserId).first<{ count: number }>(),
-    env.DB.prepare("SELECT COUNT(*) count FROM household_invitations WHERE household_id=? AND created_at>=datetime('now','-1 day')")
-      .bind(input.householdId).first<{ count: number }>(),
-  ]);
-  if ((inviterRecent?.count ?? 0) >= 10 || (householdRecent?.count ?? 0) >= 30) {
-    throw new HouseholdInvitationError("rate_limited", "Invitation limit reached. Try again later.");
-  }
-  await env.DB.prepare(`UPDATE household_invitations SET status='revoked', revoked_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
-    WHERE household_id=? AND invited_email=? AND status='pending'`).bind(input.householdId, email).run();
-  const id = crypto.randomUUID();
-  const token = randomInvitationToken();
-  const expiresAt = new Date(Date.now() + INVITATION_LIFETIME_DAYS * 86_400_000).toISOString();
-  await env.DB.prepare(`INSERT INTO household_invitations
-    (id, household_id, invited_email, relationship, role, token_prefix, token_hash, invited_by_user_id, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, input.householdId, email, relationship, role, token.slice(0, 10), await hashInvitationToken(token), input.invitedByUserId, expiresAt).run();
+  const storage = createStorageClient(env);
+  const { id, token, expiresAt } = await storage.createHouseholdInvitationRecord({ householdId: input.householdId, invitedByUserId: input.invitedByUserId, email, relationship, role });
   const message = { kind: "household-invitation", invitationId: id, rawToken: token } satisfies HouseholdInvitationEmailQueueMessage;
   if (env.EMAIL_MODE === "cloud") {
     if (!env.EMAIL_DELIVERY_QUEUE) throw new HouseholdInvitationError("email_not_configured", "Email delivery is not configured.");
-    await env.EMAIL_DELIVERY_QUEUE.send(message);
-    await env.DB.prepare("UPDATE household_invitations SET delivery_status='queued', queued_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(id).run();
+    try {
+      await env.EMAIL_DELIVERY_QUEUE.send(message);
+      await storage.updateHouseholdInvitationDelivery(id, "queued");
+    } catch (error) {
+      await storage.updateHouseholdInvitationDelivery(id, "failed", { error: "Invitation email could not be queued" }).catch(() => undefined);
+      throw error;
+    }
   } else {
     await processHouseholdInvitationEmail(env, message);
   }

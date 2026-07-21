@@ -9,6 +9,7 @@
   "vars": {
     "APP_ENV": "local",
     "LOG_LEVEL": "DEBUG",
+    "STORAGE_BACKEND": "d1",
     "BETTER_AUTH_URL": "http://127.0.0.1:5173",
     "PUBLIC_APP_URL": "http://127.0.0.1:5173",
     "PDF_MODE": "html-preview",
@@ -57,6 +58,7 @@
       "vars": {
         "APP_ENV": "preview",
         "LOG_LEVEL": "INFO",
+        "STORAGE_BACKEND": "d1",
         "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
         "PUBLIC_APP_URL": "https://family-meal-planner-preview.christkv.workers.dev",
         "PDF_MODE": "cloud",
@@ -102,6 +104,7 @@
       "vars": {
         "APP_ENV": "production",
         "LOG_LEVEL": "INFO",
+        "STORAGE_BACKEND": "d1",
         "BETTER_AUTH_URL": "https://meal-planner.example.com",
         "PUBLIC_APP_URL": "https://meal-planner.example.com",
         "PDF_MODE": "cloud",

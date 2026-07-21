@@ -8,9 +8,8 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
-import { listRecipeTagFacets, searchRecipes } from "../../src/db/recipes";
-import { getMealPlanSlots } from "../../src/db/preferences";
-import { createSavedRecipeSearch, deleteSavedRecipeSearch, listSavedRecipeSearches, savedRecipeSearchUrl, type SavedRecipeSearch } from "../../src/db/saved-searches";
+import { createStorageClient } from "../../src/storage";
+import { savedRecipeSearchUrl, type SavedRecipeSearch } from "../../src/domain/saved-searches";
 import { normalizeRecipeScope, normalizeRecipeTags, normalizeTagMatch, recipeSearchApiUrl, recipeSearchUrl } from "../../src/domain/recipe-search";
 import type { RecipeSearchResult, RecipeSearchScope, RecipeSummary, RecipeTagMatch, RecipeTagOption } from "../../src/domain/recipes";
 import { readMealPlanSelection, withMealPlanSelection, type MealPlanSelection } from "../../src/domain/planning/selection";
@@ -56,12 +55,12 @@ export async function loader({ request, context }: Route.LoaderArgs): Promise<Lo
   const empty: RecipeSearchResult = { recipes: [], total: 0, limit: 24, offset: 0 };
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
+  const storage = createStorageClient(env);
+  const access = { userId: session.user.id, householdId: session.householdId };
   try {
     const [result, facets, savedSearches, mealSlots] = await Promise.all([
-      searchRecipes(env.DB, filters, { userId: session.user.id, householdId: session.householdId }),
-      listRecipeTagFacets(env.DB, filters, { userId: session.user.id, householdId: session.householdId }),
-      listSavedRecipeSearches(env.DB, session.householdId),
-      getMealPlanSlots(env.DB, session.householdId),
+      storage.searchRecipes(filters, access), storage.listRecipeTagFacets(filters, access),
+      storage.listSavedRecipeSearches(access), storage.getMealPlanSlots(access),
     ]);
     return { result, query: filters.query, ingredient: filters.ingredient, selectedTags: filters.tags, tagMatch: filters.tagMatch, scope: filters.scope, facets, savedSearches, planSelection, planSlotLabel: mealSlots.find((slot) => slot.id === planSelection?.slot)?.label ?? null };
   } catch (error) {
@@ -76,11 +75,13 @@ export async function action({ request, context }: Route.ActionArgs) {
   const data = await request.formData();
   const filters = formFilters(data);
   const planSelection = readMealPlanSelection(data);
+  const storage = createStorageClient(env);
+  const access = { userId: session.user.id, householdId: session.householdId };
   try {
     if (data.get("intent") === "delete-search") {
-      await deleteSavedRecipeSearch(env.DB, session.householdId, String(data.get("searchId") ?? ""));
+      await storage.deleteSavedRecipeSearch(access, String(data.get("searchId") ?? ""));
     } else {
-      await createSavedRecipeSearch(env.DB, {
+      await storage.createSavedRecipeSearch({
         householdId: session.householdId,
         userId: session.user.id,
         name: data.get("name"),

@@ -1,15 +1,10 @@
-import { getShoppingListById, type ShoppingListView } from "../db/shopping";
+import { getShoppingListById } from "../db/shopping";
+import type { PublicShoppingList, ResolvedShoppingShare } from "../domain/shopping-share";
+import { parseShareExpiryDays } from "../domain/shopping-share";
+export { parseShareExpiryDays, SHARE_EXPIRY_DAYS, type PublicShoppingList, type ResolvedShoppingShare, type ShoppingShareView } from "../domain/shopping-share";
 
 const encoder = new TextEncoder();
 const SHARE_COOKIE = "tableplan_shopping_access";
-
-export const SHARE_EXPIRY_DAYS = [3, 7, 14, 30] as const;
-
-export function parseShareExpiryDays(value: unknown): number {
-  const days = Number(value ?? 14);
-  if (!SHARE_EXPIRY_DAYS.includes(days as typeof SHARE_EXPIRY_DAYS[number])) throw new Error("Link lifetime must be 3, 7, 14, or 30 days");
-  return days;
-}
 
 export function randomShareToken(bytes = 32): string {
   const value = crypto.getRandomValues(new Uint8Array(bytes));
@@ -40,13 +35,6 @@ export async function createShoppingShare(db: D1Database, input: { householdId: 
   return { id, token, expiresAt };
 }
 
-export interface ResolvedShoppingShare {
-  id: string;
-  listId: string;
-  householdId: string;
-  expiresAt: string;
-}
-
 export async function resolveShoppingShare(db: D1Database, token: string, expectedShareId?: string): Promise<ResolvedShoppingShare | null> {
   if (!token || token.length > 256) return null;
   const row = await db.prepare(`SELECT id, shopping_list_id, household_id, expires_at
@@ -68,10 +56,6 @@ export async function listShoppingShares(db: D1Database, householdId: string, li
     .bind(householdId, listId).all<{ id: string; token_prefix: string; expires_at: string; revoked_at: string | null; last_accessed_at: string | null; created_at: string }>();
   return rows.results.map((row) => ({ id: row.id, tokenPrefix: row.token_prefix, expiresAt: row.expires_at, revokedAt: row.revoked_at, lastAccessedAt: row.last_accessed_at, createdAt: row.created_at }));
 }
-
-export type PublicShoppingList = Pick<ShoppingListView, "id" | "name" | "measurementSystem" | "updatedAt" | "items"> & {
-  plan: null | { name: string; startsOn: string; endsOn: string };
-};
 
 export async function getPublicShoppingList(db: D1Database, share: ResolvedShoppingShare): Promise<PublicShoppingList | null> {
   const list = await getShoppingListById(db, share.householdId, share.listId);

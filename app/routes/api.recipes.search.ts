@@ -1,7 +1,7 @@
 import type { Route } from "./+types/api.recipes.search";
 import { cloudflareContext } from "../context";
 import { requireApiScope } from "../../src/auth/api-keys";
-import { searchRecipes } from "../../src/db/recipes";
+import { createStorageClient } from "../../src/storage";
 import { normalizeRecipeScope } from "../../src/domain/recipe-search";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -9,7 +9,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const access = await requireApiScope(request, env, ctx, "recipes:read");
   if (access instanceof Response) return access;
-  const result = await searchRecipes(env.DB, {
+  const result = await createStorageClient(env).searchRecipes({
     query: url.searchParams.get("q") ?? undefined,
     ingredient: url.searchParams.get("ingredient") ?? undefined,
     tags: url.searchParams.getAll("tag"),

@@ -1,10 +1,7 @@
 import type { MeasurementSystem } from "../domain/quantity/types";
+import { parseMeasurementSystem } from "../domain/preferences";
+export { parseMeasurementSystem } from "../domain/preferences";
 import { parseMealSlotDefinitions, readStoredMealSlots, type MealSlotDefinition } from "../domain/planning/slots";
-
-export function parseMeasurementSystem(value: unknown): MeasurementSystem {
-  if (value === "original" || value === "us" || value === "metric") return value;
-  throw new Error("Measurement system must be original, metric, or US");
-}
 
 export async function getMeasurementSystem(db: D1Database, userId: string, householdId: string): Promise<MeasurementSystem> {
   const row = await db.prepare(`

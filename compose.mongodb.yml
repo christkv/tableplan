@@ -1,0 +1,36 @@
+services:
+  mongodb:
+    image: mongo:8.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "${MONGODB_HOST_PORT:-27018}:27017"
+    volumes:
+      - tableplan-mongodb:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'try { rs.status().ok } catch (error) { rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongodb:27017\"}]}).ok }' | grep 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "${GATEWAY_HOST_PORT:-8790}:8788"
+    environment:
+      APP_ENV: local
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: 8788
+      MONGODB_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      MONGODB_DATABASE: meal_planner_local
+      MONGODB_GATEWAY_SERVICE_TOKEN: local-gateway-token-change-me-1234567890
+      GATEWAY_MAX_IN_FLIGHT: 100
+      BETTER_AUTH_URL: http://127.0.0.1:5173
+      BETTER_AUTH_SECRET: local-only-secret-change-before-deployment-32-chars
+
+volumes:
+  tableplan-mongodb:

@@ -4,6 +4,8 @@ This guide provisions Tableplan in Cloudflare for the first time. Deploy to the
 isolated `preview` environment first. Create production resources only after the
 preview release has passed its smoke tests.
 
+> Storage transition: the checked-in Cloudflare environments still use D1 so an existing deployment is not changed accidentally. The application is now capable of using the bounded MongoDB gateway. For a new MongoDB-backed installation, complete the D1 bootstrap only when importing existing D1 data, then follow [the MongoDB gateway cutover runbook](docs/migrations/mongodb-cutover-runbook.md). Do not point the Cloudflare Worker directly at MongoDB.
+
 The commands in this guide change remote Cloudflare state and may enable billed
 services. Run them from the repository root while signed into the intended
 Cloudflare account.
@@ -173,8 +175,9 @@ npx wrangler secret put BETTER_AUTH_SECRET --env preview
 ```
 
 If the application is connected to Better Auth Dash, store the API key shown
-by the Dash project wizard. The server registers the Dash plugin only when this
-binding is present:
+by the Dash project wizard. The Dash route is registered even before this value
+exists so onboarding can discover it, but ownership verification succeeds only
+when the Worker and MongoDB gateway both use the exact key issued by the wizard:
 
 ```bash
 npx wrangler secret put BETTER_AUTH_API_KEY --env preview
@@ -258,7 +261,22 @@ Record the deployed URL and confirm that it exactly matches
 `BETTER_AUTH_URL` and `PUBLIC_APP_URL`. If the URL differs, correct both values
 and deploy again before testing authentication or generated links.
 
-## 11. Verify preview
+## 11. Deploy MongoDB storage (recommended target)
+
+MongoDB is accessed through the separately deployed regional gateway, which owns a bounded connection pool and also hosts Better Auth. The sequence is:
+
+1. Provision a transaction-capable MongoDB deployment and three credentials (gateway, importer, administrator).
+2. Deploy `Dockerfile.gateway` with a hard instance cap near MongoDB.
+3. Run `npm run gateway:migrate -- --atlas-search` with the administrator credential.
+4. Run `npm run import:mongodb -- data/recipes_ingredients.csv --batch-size 500` with the importer credential.
+5. Store `MONGODB_GATEWAY_URL` and `MONGODB_GATEWAY_SERVICE_TOKEN` as Cloudflare secrets.
+6. Rehearse the D1 snapshot/load/verify process.
+7. Use `MIGRATION_MAINTENANCE_MODE=true` for the final frozen export, then change `STORAGE_BACKEND` to `mongodb-gateway`.
+8. Verify `/api/auth/dash/validate`, sign-in, search, private data, ingestion, sharing, and email before reopening writes.
+
+The exact commands, Better Auth Create Project values, rollback boundary, connection-budget calculation, and retirement gate are in [docs/migrations/mongodb-cutover-runbook.md](docs/migrations/mongodb-cutover-runbook.md). Keep the same `BETTER_AUTH_SECRET` and `BETTER_AUTH_API_KEY` on the application Worker and gateway. Use the public application URL—not the gateway URL—as the Better Auth and Dash base URL. A manual unauthenticated request to `/api/auth/dash/validate` should return 401 once the route exists; the Dash wizard supplies the signed bearer token needed for a successful validation.
+
+## 12. Verify preview
 
 Start with the health endpoint:
 
@@ -286,7 +304,7 @@ Then complete these smoke tests:
 Use Cloudflare Worker logs, Queue status, and Workflow instances to diagnose
 failures. Do not enable verbose logging permanently in a deployed environment.
 
-## 12. Import recipe data when required
+## 13. Import recipe data when required
 
 Database migrations create the schema but do not load the full recipe catalog.
 Follow the step-by-step **Full Catalog Import to Preview** procedure in
@@ -300,7 +318,7 @@ npm run import -- apply-remote .import/sql --env preview --confirm
 
 Keep catalog import separate from schema migration and application deployment.
 
-## 13. Provision production resources
+## 14. Provision production resources
 
 Proceed only after preview has passed the smoke tests. Create production
 resources that are separate from preview:
@@ -327,7 +345,7 @@ Google OAuth client with this callback:
 https://<production-origin>/api/auth/callback/google
 ```
 
-## 14. Store production secrets
+## 15. Store production secrets
 
 Use new values rather than copying preview secrets:
 
@@ -340,7 +358,7 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET --env production
 
 The Google commands may be omitted when Google sign-in is disabled.
 
-## 15. Migrate and deploy production
+## 16. Migrate and deploy production
 
 After reviewing the complete production configuration:
 
@@ -357,7 +375,7 @@ Do not combine production schema migration, full catalog replacement, and
 application deployment into a single unreviewed operation. Follow
 `docs/operations/recipe-import.md` for the production catalog release.
 
-## 16. Ongoing deployments
+## 17. Ongoing deployments
 
 Once initial provisioning is complete, normal releases use the existing
 resources:

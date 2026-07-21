@@ -1,6 +1,7 @@
-import { getShoppingListById, type ShoppingListView } from "../db/shopping";
+import type { ShoppingListView } from "../domain/shopping";
+import { createStorageClient } from "../storage";
 import { formatNumber } from "../domain/quantity/format";
-import { createShoppingShare, parseShareExpiryDays } from "../sharing/shopping-share";
+import { parseShareExpiryDays } from "../domain/shopping-share";
 import { escapeHtml } from "../exports/render";
 
 export interface ShoppingEmailQueueMessage {
@@ -32,21 +33,26 @@ export function renderShoppingEmail(list: ShoppingListView, shareUrl: string, ex
 
 export async function queueShoppingListEmail(env: ShoppingEmailEnvironment, input: { householdId: string; userId: string; listId: string; recipientEmail: string; expiresInDays: number }) {
   const expiresInDays = parseShareExpiryDays(input.expiresInDays);
-  const [userRecent, householdRecent] = await Promise.all([
-    env.DB.prepare("SELECT COUNT(*) count FROM email_deliveries WHERE user_id=? AND created_at>=datetime('now','-1 hour')").bind(input.userId).first<{ count: number }>(),
-    env.DB.prepare("SELECT COUNT(*) count FROM email_deliveries WHERE household_id=? AND created_at>=datetime('now','-1 day')").bind(input.householdId).first<{ count: number }>(),
-  ]);
-  if ((userRecent?.count ?? 0) >= 5 || (householdRecent?.count ?? 0) >= 20) throw new Error("Email rate limit reached. Try again later.");
-  const share = await createShoppingShare(env.DB, { householdId: input.householdId, userId: input.userId, listId: input.listId, expiresInDays });
-  const deliveryId = crypto.randomUUID();
-  await env.DB.prepare(`INSERT INTO email_deliveries
-    (id, household_id, user_id, shopping_list_id, share_id, recipient_email, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending')`).bind(deliveryId, input.householdId, input.userId, input.listId, share.id, input.recipientEmail).run();
+  const storage = createStorageClient(env);
+  const share = await storage.createShoppingShare({ householdId: input.householdId, userId: input.userId, listId: input.listId, expiresInDays });
+  let deliveryId: string;
+  try {
+    deliveryId = await storage.createEmailDelivery({ householdId: input.householdId, userId: input.userId, listId: input.listId, shareId: share.id, recipientEmail: input.recipientEmail });
+  } catch (error) {
+    await storage.revokeShoppingShare({ householdId: input.householdId, userId: input.userId }, input.listId, share.id).catch(() => undefined);
+    throw error;
+  }
   const message = { kind: "shopping-list", deliveryId, rawToken: share.token } satisfies ShoppingEmailQueueMessage;
   if (env.EMAIL_MODE === "cloud") {
     if (!env.EMAIL_DELIVERY_QUEUE) throw new Error("Email delivery queue is not configured");
-    await env.EMAIL_DELIVERY_QUEUE.send(message);
-    await env.DB.prepare("UPDATE email_deliveries SET status='queued', queued_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(deliveryId).run();
+    try {
+      await env.EMAIL_DELIVERY_QUEUE.send(message);
+      await storage.updateEmailDelivery(deliveryId, "queued");
+    } catch (error) {
+      await storage.updateEmailDelivery(deliveryId, "failed", { error: "Email could not be queued" }).catch(() => undefined);
+      await storage.revokeShoppingShare({ householdId: input.householdId, userId: input.userId }, input.listId, share.id).catch(() => undefined);
+      throw error;
+    }
   } else {
     await processShoppingEmail(env, message);
   }
@@ -55,24 +61,21 @@ export async function queueShoppingListEmail(env: ShoppingEmailEnvironment, inpu
 }
 
 export async function processShoppingEmail(env: ShoppingEmailEnvironment, message: ShoppingEmailQueueMessage) {
-  const delivery = await env.DB.prepare(`SELECT ed.id, ed.shopping_list_id, ed.recipient_email, ed.status, ed.attempt_count, sl.household_id,
-      ss.expires_at FROM email_deliveries ed JOIN shopping_lists sl ON sl.id=ed.shopping_list_id
-      JOIN shopping_list_shares ss ON ss.id=ed.share_id WHERE ed.id=?`)
-    .bind(message.deliveryId).first<{ id: string; shopping_list_id: string; recipient_email: string; status: string; attempt_count: number; household_id: string; expires_at: string }>();
-  if (!delivery || delivery.status === "sent") return;
-  await env.DB.prepare("UPDATE email_deliveries SET status='sending', attempt_count=attempt_count+1, updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(delivery.id).run();
+  const storage = createStorageClient(env);
+  const delivery = await storage.claimEmailDelivery(message.deliveryId);
+  if (!delivery) return;
   try {
-    const list = await getShoppingListById(env.DB, delivery.household_id, delivery.shopping_list_id);
+    const list = await storage.getShoppingListById({ userId: delivery.userId, householdId: delivery.householdId }, delivery.shoppingListId);
     if (!list) throw new Error("Shopping list not found");
     const baseUrl = (env.PUBLIC_APP_URL ?? env.BETTER_AUTH_URL).replace(/\/$/, "");
     const shareUrl = `${baseUrl}/shared/shopping#access=${encodeURIComponent(message.rawToken)}`;
-    const content = renderShoppingEmail(list, shareUrl, delivery.expires_at);
+    const content = renderShoppingEmail(list, shareUrl, delivery.expiresAt);
     let providerMessageId = `capture-${delivery.id}`;
     if (env.EMAIL_MODE === "cloud") {
       if (!env.EMAIL || !env.EMAIL_FROM) throw new Error("Cloudflare email binding is not configured");
       const sent = await env.EMAIL.send({
         from: env.EMAIL_FROM,
-        to: delivery.recipient_email,
+        to: delivery.recipientEmail,
         subject: content.subject,
         html: content.html,
         text: content.text,
@@ -80,10 +83,9 @@ export async function processShoppingEmail(env: ShoppingEmailEnvironment, messag
       });
       providerMessageId = sent.messageId;
     }
-    await env.DB.prepare(`UPDATE email_deliveries SET status='sent', provider_message_id=?, sent_at=CURRENT_TIMESTAMP,
-      last_error_code=NULL, last_error_message=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(providerMessageId, delivery.id).run();
+    await storage.updateEmailDelivery(delivery.id, "sent", { providerMessageId });
   } catch (error) {
-    await markEmailDeliveryFailed(env.DB, delivery.id, error);
+    await storage.updateEmailDelivery(delivery.id, "failed", { error: error instanceof Error ? error.message.slice(0, 500) : "Email delivery failed" });
     throw error;
   }
 }

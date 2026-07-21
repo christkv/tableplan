@@ -1,11 +1,8 @@
-import { getMealPlanById } from "../db/planning";
-import { getMealPlanSlots } from "../db/preferences";
-import { getRecipe } from "../db/recipes";
-import { getShoppingListById, getShoppingListForPlan } from "../db/shopping";
 import { displayIngredientLine, resolveServingScale } from "../domain/quantity/display";
 import { formatNumber } from "../domain/quantity/format";
 import type { MeasurementSystem } from "../domain/quantity/types";
 import type { RecipeAccessContext } from "../domain/recipes";
+import type { StorageClient } from "../storage";
 
 export interface ExportOptions {
   paper: "a4" | "letter";
@@ -74,8 +71,8 @@ export function safeExportFilename(value: string): string {
   return safe || "tableplan-export";
 }
 
-export async function buildRecipeExport(db: D1Database, recipeId: string, access: RecipeAccessContext, options: ExportOptions): Promise<RecipeExportModel | null> {
-  const recipe = await getRecipe(db, recipeId, access);
+export async function buildRecipeExport(storage: StorageClient, recipeId: string, access: RecipeAccessContext, options: ExportOptions): Promise<RecipeExportModel | null> {
+  const recipe = await storage.getRecipe(recipeId, access);
   if (!recipe) return null;
   const serving = resolveServingScale(recipe.servings, options.servings);
   return {
@@ -100,8 +97,8 @@ const addUtcDays = (date: string, days: number) => {
   return value.toISOString().slice(0, 10);
 };
 
-export async function buildMealPlanExport(db: D1Database, householdId: string, planId: string): Promise<MealPlanExportModel | null> {
-  const [plan, configuredSlots] = await Promise.all([getMealPlanById(db, householdId, planId), getMealPlanSlots(db, householdId)]);
+export async function buildMealPlanExport(storage: StorageClient, access: RecipeAccessContext, planId: string): Promise<MealPlanExportModel | null> {
+  const [plan, configuredSlots] = await Promise.all([storage.getMealPlanById(access, planId), storage.getMealPlanSlots(access)]);
   if (!plan) return null;
   const slotIds = new Set(configuredSlots.map((slot) => slot.id));
   const legacy = [...new Set(plan.items.map((item) => item.mealSlot))].filter((slot) => !slotIds.has(slot))
@@ -121,8 +118,8 @@ export async function buildMealPlanExport(db: D1Database, householdId: string, p
 const quantityText = (min: string | null, max: string | null, unit: string | null) => min === null
   ? "" : `${formatNumber(Number(min))}${max === null ? "" : `-${formatNumber(Number(max))}`} ${unit ?? ""}`.trim();
 
-export async function buildShoppingListExport(db: D1Database, householdId: string, listId: string, options: ExportOptions): Promise<ShoppingListExportModel | null> {
-  const list = await getShoppingListById(db, householdId, listId, options.measurementSystem);
+export async function buildShoppingListExport(storage: StorageClient, access: RecipeAccessContext, listId: string, options: ExportOptions): Promise<ShoppingListExportModel | null> {
+  const list = await storage.getShoppingListById(access, listId, options.measurementSystem);
   if (!list) return null;
   return {
     kind: "shopping-list",
@@ -141,12 +138,12 @@ export async function buildShoppingListExport(db: D1Database, householdId: strin
   };
 }
 
-export async function buildCombinedExport(db: D1Database, householdId: string, planId: string, listId: string | undefined, options: ExportOptions): Promise<CombinedExportModel | null> {
+export async function buildCombinedExport(storage: StorageClient, access: RecipeAccessContext, planId: string, listId: string | undefined, options: ExportOptions): Promise<CombinedExportModel | null> {
   const [plan, list] = await Promise.all([
-    buildMealPlanExport(db, householdId, planId),
-    getShoppingListForPlan(db, householdId, planId, listId, options.measurementSystem),
+    buildMealPlanExport(storage, access, planId),
+    storage.getShoppingListForPlan(access, planId, listId, options.measurementSystem),
   ]);
   if (!plan || !list) return null;
-  const shoppingList = await buildShoppingListExport(db, householdId, list.id, options);
+  const shoppingList = await buildShoppingListExport(storage, access, list.id, options);
   return shoppingList ? { kind: "combined", plan, shoppingList } : null;
 }

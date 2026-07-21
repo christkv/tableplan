@@ -7,11 +7,11 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Select } from "~/components/ui/select";
 import { cloudflareContext } from "../context";
-import { createApiKey, listApiKeys, revokeApiKey, type ApiScope } from "../../src/auth/api-keys";
+import type { ApiScope } from "../../src/domain/api-keys";
 import { requireRequestSession } from "../../src/auth/server";
-import { getMealPlanSlots, getMeasurementSystem, updateMealPlanSlots, updateMeasurementSystem } from "../../src/db/preferences";
+import { createStorageClient } from "../../src/storage";
 import { maximumMealSlots, type MealSlotDefinition } from "../../src/domain/planning/slots";
-import { createHouseholdInvitation, getHouseholdMembers, HouseholdInvitationError, revokeHouseholdInvitation, switchDefaultHousehold } from "../../src/households/invitations";
+import { createHouseholdInvitation, HouseholdInvitationError } from "../../src/households/invitations";
 
 const defaultScopes: ApiScope[] = ["recipes:read", "recipes:write", "plans:read", "plans:write", "shopping:read", "shopping:write"];
 
@@ -19,11 +19,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const url = new URL(request.url);
+  const storage = createStorageClient(env); const access = { userId: session.user.id, householdId: session.householdId };
   const [keys, measurementSystem, mealSlots, household] = await Promise.all([
-    listApiKeys(env.DB, session.user.id),
-    getMeasurementSystem(env.DB, session.user.id, session.householdId),
-    getMealPlanSlots(env.DB, session.householdId),
-    getHouseholdMembers(env.DB, session.householdId, session.user.id),
+    storage.listApiKeys(session.user.id),
+    storage.getMeasurementSystem(session.user.id, session.householdId),
+    storage.getMealPlanSlots(access),
+    storage.getHouseholdOverview(session.householdId, session.user.id),
   ]);
   return { keys, measurementSystem, mealSlots, household, settingsSaved: url.searchParams.get("saved") };
 }
@@ -32,9 +33,10 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const data = await request.formData();
+  const storage = createStorageClient(env); const access = { userId: session.user.id, householdId: session.householdId };
   if (data.get("intent") === "switch-household") {
     try {
-      await switchDefaultHousehold(env.DB, session.user.id, String(data.get("householdId") ?? ""));
+      await storage.switchDefaultHousehold(session.user.id, String(data.get("householdId") ?? ""));
       return redirect("/settings?saved=household-switched");
     } catch (error) {
       return {
@@ -72,7 +74,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
   if (data.get("intent") === "revoke-invitation") {
     try {
-      await revokeHouseholdInvitation(env.DB, session.householdId, session.user.id, String(data.get("invitationId") ?? ""));
+      await storage.revokeHouseholdInvitation(session.householdId, session.user.id, String(data.get("invitationId") ?? ""));
       return redirect("/settings?saved=invitation-revoked");
     } catch (error) {
       return {
@@ -84,22 +86,22 @@ export async function action({ request, context }: Route.ActionArgs) {
     }
   }
   if (data.get("intent") === "measurement") {
-    await updateMeasurementSystem(env.DB, session.user.id, session.householdId, data.get("measurementSystem"));
+    await storage.updateMeasurementSystem(session.user.id, session.householdId, data.get("measurementSystem"));
     return redirect("/settings?saved=measurements");
   }
   if (data.get("intent") === "meal-slots") {
     try {
-      await updateMealPlanSlots(env.DB, session.householdId, data.getAll("mealSlotId"), data.getAll("mealSlotLabel"));
+      await storage.updateMealPlanSlots(access, data.getAll("mealSlotId"), data.getAll("mealSlotLabel"));
       return redirect("/settings?saved=meal-slots");
     } catch (error) {
       return { createdKey: null, mealSlotsError: error instanceof Error ? error.message : "Meal sections could not be saved" };
     }
   }
   if (data.get("intent") === "revoke") {
-    await revokeApiKey(env.DB, session.user.id, String(data.get("keyId")));
+    await storage.revokeApiKey(session.user.id, String(data.get("keyId")));
     return { createdKey: null };
   }
-  const created = await createApiKey(env.DB, { userId: session.user.id, householdId: session.householdId, name: String(data.get("name") || "Assistant access"), environment: env.APP_ENV === "production" ? "live" : "test", scopes: defaultScopes });
+  const created = await storage.createApiKey({ userId: session.user.id, householdId: session.householdId, name: String(data.get("name") || "Assistant access"), environment: env.APP_ENV === "production" ? "live" : "test", scopes: defaultScopes });
   return { createdKey: created.key };
 }
 

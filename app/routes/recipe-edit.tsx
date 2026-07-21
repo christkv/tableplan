@@ -6,16 +6,14 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cloudflareContext } from "../context";
 import { requireRequestSession } from "../../src/auth/server";
-import { getRecipe } from "../../src/db/recipes";
-import { updateOwnedRecipe } from "../../src/ingestion/service";
-import { refreshShoppingListsForRecipe } from "../../src/db/shopping";
+import { createStorageClient } from "../../src/storage";
 
 const lines = (value: FormDataEntryValue | null) => String(value ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
 
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
-  const recipe = await getRecipe(env.DB, params.recipeId, { userId: session.user.id, householdId: session.householdId });
+  const recipe = await createStorageClient(env).getRecipe(params.recipeId, { userId: session.user.id, householdId: session.householdId });
   if (!recipe?.isOwner) throw new Response("Recipe not found", { status: 404 });
   return { recipe };
 }
@@ -24,14 +22,15 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const data = await request.formData();
+  const storage = createStorageClient(env);
   try {
-    await updateOwnedRecipe(env.DB, {
+    await storage.updateOwnedRecipe({
       recipeId: params.recipeId, access: { userId: session.user.id, householdId: session.householdId },
       draft: { title: String(data.get("title") ?? ""), description: String(data.get("description") ?? ""), servings: Number(data.get("servings")) || null,
         servingSize: String(data.get("servingSize") ?? "") || null, ingredients: lines(data.get("ingredients")), steps: lines(data.get("steps")),
         tags: String(data.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean), warnings: [] },
     });
-    await refreshShoppingListsForRecipe(env.DB, session.householdId, params.recipeId);
+    await storage.refreshShoppingListsForRecipe({ userId: session.user.id, householdId: session.householdId }, params.recipeId);
     return redirect(`/recipes/${params.recipeId}`);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Recipe could not be saved" };

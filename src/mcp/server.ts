@@ -4,16 +4,10 @@ import * as z from "zod/v4";
 
 import type { ApiAccessContext, ApiScope } from "../auth/api-keys";
 import { addDays, startOfIsoWeek, weekDates } from "../domain/planning/dates";
-import { addMealPlanItem, copyMealPlanWeek, ensureMealPlan, getMealPlan, updateMealPlanItemServings } from "../db/planning";
-import { getMealPlanSlots } from "../db/preferences";
-import { getRecipe, searchRecipes } from "../db/recipes";
-import { createSavedRecipeSearch, deleteSavedRecipeSearch, listSavedRecipeSearches } from "../db/saved-searches";
-import { generateShoppingList, getLatestShoppingList, refreshShoppingListForPlan } from "../db/shopping";
+import { createStorageClient } from "../storage";
 import { resolveServingScale, scaleStoredQuantity } from "../domain/quantity/display";
-import { getRecipeIngestion, publishRecipeDraft } from "../ingestion/service";
 import { startTextRecipeIngestion } from "../ingestion/start";
 import { queueShoppingListEmail } from "../email/shopping-email";
-import { createShoppingShare, revokeShoppingShare } from "../sharing/shopping-share";
 
 const result = (value: unknown, text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -25,6 +19,7 @@ function assertScope(access: ApiAccessContext, scope: ApiScope) {
 }
 
 export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: ApiAccessContext) {
+  const storage = createStorageClient(env);
   const server = new McpServer({ name: "tableplan", version: "1.0.0" }, {
     instructions: "Search recipes before planning. Use explicit ISO dates and servings. Read the current plan before changing it. Generate a shopping list only after the user has selected the intended week.",
   });
@@ -36,7 +31,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, async ({ query, ingredient, tags, tagMatch, scope, limit }) => {
     assertScope(access, "recipes:read");
-    const recipes = await searchRecipes(env.DB, { query, ingredient, tags, tagMatch, scope, limit }, access);
+    const recipes = await storage.searchRecipes({ query, ingredient, tags, tagMatch, scope, limit }, access);
     const compact = recipes.recipes.map(({ id, name, description, servings, tags, ingredients }) => ({ id, name, description, servings, tags: tags.slice(0, 8), ingredients: ingredients.slice(0, 8) }));
     return result({ recipes: compact, total: recipes.total }, `Found ${recipes.total} matching recipes; returning ${compact.length}.`);
   });
@@ -48,7 +43,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, async () => {
     assertScope(access, "recipes:read");
-    const savedSearches = await listSavedRecipeSearches(env.DB, access.householdId);
+    const savedSearches = await storage.listSavedRecipeSearches(access);
     return result({ savedSearches }, `Found ${savedSearches.length} saved recipe searches.`);
   });
 
@@ -59,7 +54,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ name, query, ingredient, tags, tagMatch }) => {
     assertScope(access, "recipes:write");
-    const savedSearch = await createSavedRecipeSearch(env.DB, { householdId: access.householdId, userId: access.userId, name, filters: { query, ingredient, tags, tagMatch } });
+    const savedSearch = await storage.createSavedRecipeSearch({ householdId: access.householdId, userId: access.userId, name, filters: { query, ingredient, tags, tagMatch } });
     return result({ savedSearch }, `Saved recipe search ${savedSearch.name}.`);
   });
 
@@ -70,7 +65,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   }, async ({ savedSearchId }) => {
     assertScope(access, "recipes:write");
-    await deleteSavedRecipeSearch(env.DB, access.householdId, savedSearchId);
+    await storage.deleteSavedRecipeSearch(access, savedSearchId);
     return result({ savedSearchId, deleted: true }, `Deleted saved recipe search ${savedSearchId}.`);
   });
 
@@ -81,7 +76,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, async ({ recipeId, servings }) => {
     assertScope(access, "recipes:read");
-    const recipe = await getRecipe(env.DB, recipeId, access);
+    const recipe = await storage.getRecipe(recipeId, access);
     if (!recipe) throw new Error("Recipe not found");
     const serving = resolveServingScale(recipe.servings, servings);
     const adjustedRecipe = { ...recipe, selectedServings: serving.servings, servingScale: serving.scale, recipeIngredients: recipe.recipeIngredients.map((item) => scaleStoredQuantity(item, serving.scale)) };
@@ -96,7 +91,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
   }, async ({ text, filename }) => {
     assertScope(access, "recipes:write");
     const ingestionId = await startTextRecipeIngestion(env, { userId: access.userId, householdId: access.householdId, text, filename });
-    const ingestion = await getRecipeIngestion(env.DB, ingestionId, access);
+    const ingestion = await storage.getRecipeIngestion(ingestionId, access);
     return result({ ingestion }, ingestion?.status === "review_ready" ? "The recipe draft is ready for review." : "Recipe extraction has started.");
   });
 
@@ -107,7 +102,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, async ({ ingestionId }) => {
     assertScope(access, "recipes:read");
-    const ingestion = await getRecipeIngestion(env.DB, ingestionId, access);
+    const ingestion = await storage.getRecipeIngestion(ingestionId, access);
     if (!ingestion) throw new Error("Recipe import not found");
     return result({ ingestion }, `Recipe import status: ${ingestion.status}. ${ingestion.progressMessage}`);
   });
@@ -123,10 +118,10 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   }, async ({ ingestionId, visibility, title, description, servings, ingredients, steps, tags }) => {
     assertScope(access, "recipes:write");
-    const ingestion = await getRecipeIngestion(env.DB, ingestionId, access);
+    const ingestion = await storage.getRecipeIngestion(ingestionId, access);
     if (!ingestion?.draft) throw new Error("Recipe draft is not ready");
     const draft = { ...ingestion.draft, ...(title === undefined ? {} : { title }), ...(description === undefined ? {} : { description }), ...(servings === undefined ? {} : { servings }), ...(ingredients === undefined ? {} : { ingredients }), ...(steps === undefined ? {} : { steps }), ...(tags === undefined ? {} : { tags }) };
-    const recipeId = await publishRecipeDraft(env.DB, { ingestionId, userId: access.userId, householdId: access.householdId, visibility, draft, ingredientSelections: [] });
+    const recipeId = await storage.publishRecipeDraft({ ingestionId, userId: access.userId, householdId: access.householdId, visibility, draft, ingredientSelections: [] });
     return result({ recipeId, visibility }, `Published ${draft.title} with ${visibility === "household" ? "household" : "private"} visibility.`);
   });
 
@@ -139,8 +134,8 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     assertScope(access, "plans:read");
     const start = startOfIsoWeek(week);
     const [plan, mealSlots] = await Promise.all([
-      getMealPlan(env.DB, access.householdId, start, addDays(start, 6)),
-      getMealPlanSlots(env.DB, access.householdId),
+      storage.getMealPlan(access, start, addDays(start, 6)),
+      storage.getMealPlanSlots(access),
     ]);
     return result({ week: start, plan, mealSlots }, plan ? `The week contains ${plan.items.length} planned meals.` : "No meal plan exists for this week.");
   });
@@ -154,14 +149,14 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     assertScope(access, "plans:write");
     const start = startOfIsoWeek(date);
     if (!weekDates(start).includes(date)) throw new Error("Date is outside the resolved week");
-    const mealSlots = await getMealPlanSlots(env.DB, access.householdId);
+    const mealSlots = await storage.getMealPlanSlots(access);
     if (!mealSlots.some((definition) => definition.id === slot)) throw new Error("Meal section is not configured for this household");
-    const recipe = await getRecipe(env.DB, recipeId, access);
+    const recipe = await storage.getRecipe(recipeId, access);
     if (!recipe) throw new Error("Recipe not found");
     if (recipe.visibility === "user_private") throw new Error("Share this recipe with the household before adding it to a meal plan");
-    const planId = await ensureMealPlan(env.DB, { householdId: access.householdId, startsOn: start, endsOn: addDays(start, 6), timezone: "UTC", userId: access.userId });
-    const itemId = await addMealPlanItem(env.DB, { householdId: access.householdId, planId, recipeId, date, slot, servings });
-    await refreshShoppingListForPlan(env.DB, access.householdId, planId);
+    const planId = await storage.ensureMealPlan({ householdId: access.householdId, startsOn: start, endsOn: addDays(start, 6), timezone: "UTC", userId: access.userId });
+    const itemId = await storage.addMealPlanItem({ householdId: access.householdId, userId: access.userId, planId, recipeId, date, slot, servings });
+    await storage.refreshShoppingListForPlan(access, planId);
     return result({ planId, itemId, recipeId, recipeName: recipe.name, date, slot, servings }, `Added ${recipe.name} to ${date} ${slot} for ${servings} servings.`);
   });
 
@@ -172,8 +167,8 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ itemId, servings }) => {
     assertScope(access, "plans:write");
-    const planId = await updateMealPlanItemServings(env.DB, { householdId: access.householdId, itemId, servings });
-    const shoppingListId = await refreshShoppingListForPlan(env.DB, access.householdId, planId);
+    const planId = await storage.updateMealPlanItemServings({ householdId: access.householdId, userId: access.userId, itemId, servings });
+    const shoppingListId = await storage.refreshShoppingListForPlan(access, planId);
     return result({ itemId, planId, servings, shoppingListId }, `Updated the planned meal to ${servings} servings${shoppingListId ? " and refreshed its shopping list" : ""}.`);
   });
 
@@ -185,8 +180,8 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
   }, async ({ targetWeek }) => {
     assertScope(access, "plans:write");
     const targetStartsOn = startOfIsoWeek(targetWeek);
-    const copied = await copyMealPlanWeek(env.DB, { householdId: access.householdId, userId: access.userId, sourceStartsOn: addDays(targetStartsOn, -7), targetStartsOn, timezone: "UTC" });
-    await refreshShoppingListForPlan(env.DB, access.householdId, copied.planId);
+    const copied = await storage.copyMealPlanWeek({ householdId: access.householdId, userId: access.userId, sourceStartsOn: addDays(targetStartsOn, -7), targetStartsOn, timezone: "UTC" });
+    await storage.refreshShoppingListForPlan(access, copied.planId);
     return result({ ...copied, week: targetStartsOn }, `Copied ${copied.itemCount} meals into the week of ${targetStartsOn}.`);
   });
 
@@ -198,7 +193,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
   }, async ({ planId, week, measurementSystem }) => {
     assertScope(access, "shopping:write");
     const start = startOfIsoWeek(week);
-    const listId = await generateShoppingList(env.DB, { householdId: access.householdId, planId, startsOn: start, endsOn: addDays(start, 6), userId: access.userId, measurementSystem });
+    const listId = await storage.generateShoppingList({ householdId: access.householdId, planId, startsOn: start, endsOn: addDays(start, 6), userId: access.userId, measurementSystem });
     return result({ listId, planId, week: start, measurementSystem }, `Generated shopping list ${listId} for the week of ${start}.`);
   });
 
@@ -209,7 +204,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, async () => {
     assertScope(access, "shopping:read");
-    const list = await getLatestShoppingList(env.DB, access.householdId);
+    const list = await storage.getLatestShoppingList(access);
     return result({ list }, list ? `The latest list has ${list.items.length} items.` : "No shopping list exists yet.");
   });
 
@@ -220,7 +215,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   }, async ({ listId, expiresInDays }) => {
     assertScope(access, "shopping:write");
-    const share = await createShoppingShare(env.DB, { householdId: access.householdId, userId: access.userId, listId, expiresInDays });
+    const share = await storage.createShoppingShare({ householdId: access.householdId, userId: access.userId, listId, expiresInDays });
     const shareUrl = `${env.PUBLIC_APP_URL.replace(/\/$/, "")}/shared/shopping#access=${encodeURIComponent(share.token)}`;
     return result({ shareId: share.id, shareUrl, expiresAt: share.expiresAt }, `Created a store checklist link that expires ${share.expiresAt}. Treat the returned URL as a secret.`);
   });
@@ -232,7 +227,7 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   }, async ({ listId, shareId }) => {
     assertScope(access, "shopping:write");
-    const revoked = await revokeShoppingShare(env.DB, access.householdId, listId, shareId);
+    const revoked = await storage.revokeShoppingShare(access, listId, shareId);
     if (!revoked) throw new Error("Shopping-list link not found");
     return result({ listId, shareId, revoked: true }, "The store checklist link was revoked.");
   });
@@ -244,9 +239,9 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   }, async ({ listId, expiresInDays }) => {
     assertScope(access, "shopping:write");
-    const user = await env.DB.prepare('SELECT email FROM "user" WHERE id=?').bind(access.userId).first<{ email: string }>();
-    if (!user) throw new Error("Account email not found");
-    const delivery = await queueShoppingListEmail(env, { householdId: access.householdId, userId: access.userId, listId, recipientEmail: user.email, expiresInDays });
+    const email = await storage.getUserEmail(access.userId);
+    if (!email) throw new Error("Account email not found");
+    const delivery = await queueShoppingListEmail(env, { householdId: access.householdId, userId: access.userId, listId, recipientEmail: email, expiresInDays });
     return result({ deliveryId: delivery.deliveryId, shareId: delivery.shareId, expiresAt: delivery.expiresAt }, `Queued the shopping list for the authenticated account email. Delivery ID: ${delivery.deliveryId}.`);
   });
 

@@ -114,7 +114,16 @@ export async function publishRecipeDraft(db: D1Database, input: PublishRecipeInp
   if (!draft.ingredients.length) throw new Error("At least one ingredient is required");
   if (!draft.steps.length) throw new Error("At least one instruction is required");
   const job = await getRecipeIngestion(db, input.ingestionId, { userId: input.userId, householdId: input.householdId });
+  if (job?.status === "published" && job.recipeId) return job.recipeId;
   if (!job || !["review_ready", "failed"].includes(job.status)) throw new Error("Recipe ingestion is not ready to publish");
+  const claimed = await db.prepare(`UPDATE recipe_ingestions SET status='publishing', progress_message='Publishing recipe',
+    updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND household_id=? AND status IN ('review_ready','failed')`)
+    .bind(input.ingestionId, input.userId, input.householdId).run();
+  if (!claimed.meta.changes) {
+    const replay = await getRecipeIngestion(db, input.ingestionId, { userId: input.userId, householdId: input.householdId });
+    if (replay?.status === "published" && replay.recipeId) return replay.recipeId;
+    throw new Error("Recipe ingestion is not ready to publish");
+  }
   const recipeId = crypto.randomUUID();
   const sourceId = `user:${input.userId}:${recipeId}`;
   const selections = new Map(job.ingredientReviews.map((item) => [item.position, { position: item.position, ingredientId: item.ingredientId, rememberAlias: false }]));
@@ -145,8 +154,15 @@ export async function publishRecipeDraft(db: D1Database, input: PublishRecipeInp
     db.prepare("UPDATE recipe_ingestions SET status='published', recipe_id=?, progress_message='Recipe published', completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?")
       .bind(recipeId, input.ingestionId, input.userId),
   ];
-  await db.batch(statements);
-  return recipeId;
+  try {
+    await db.batch(statements);
+    return recipeId;
+  } catch (error) {
+    await db.prepare(`UPDATE recipe_ingestions SET status=?, progress_message='Ready for review',
+      updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND status='publishing' AND recipe_id IS NULL`)
+      .bind(job.status, input.ingestionId, input.userId).run();
+    throw error;
+  }
 }
 
 export async function setRecipeVisibility(db: D1Database, recipeId: string, access: RecipeAccessContext, visibility: Extract<RecipeVisibility, "user_private" | "household">) {
