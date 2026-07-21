@@ -35,10 +35,10 @@ and its Chat Completions API. Select models with environment variables:
 
 ```dotenv
 RECIPE_EXTRACTION_PROVIDER=openrouter
-OPENROUTER_TEXT_MODEL=~openai/gpt-latest
-OPENROUTER_TEXT_FALLBACK_MODELS=anthropic/claude-sonnet-4
-OPENROUTER_VISION_MODEL=google/gemini-2.5-flash
-OPENROUTER_VISION_FALLBACK_MODELS=openai/gpt-4.1-mini
+OPENROUTER_TEXT_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free
+OPENROUTER_TEXT_FALLBACK_MODELS=
+OPENROUTER_VISION_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+OPENROUTER_VISION_FALLBACK_MODELS=
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_APP_TITLE=Tableplan
 OPENROUTER_API_KEY=replace-with-a-secret
@@ -58,19 +58,24 @@ image requests to models and providers that accept image input. The resolved
 model is saved on the ingestion job for audit and cost analysis. A model change
 requires configuration and redeployment, not a code or schema change.
 
-Requests require JSON Schema support and route only to endpoints that support
-every supplied parameter. They deny data-collection endpoints and require
-zero-data-retention processing because uploaded recipes are private user data.
-Choose models that have a compatible structured-output and ZDR endpoint. The
-base URL is restricted to HTTPS OpenRouter hosts; use
-`https://eu.openrouter.ai/api/v1` when EU in-region processing is required.
+Requests normally require JSON Schema support and route only to endpoints that
+support every supplied parameter. They deny data-collection endpoints and
+require zero-data-retention processing. The two configured NVIDIA `:free`
+models are explicit exceptions: they allow provider data collection, do not
+require ZDR, and use schema-in-prompt extraction with defensive JSON parsing
+because those endpoints do not advertise structured outputs. Recipe sources
+sent to these free endpoints may be logged and used by NVIDIA to improve its
+services. Do not upload personal or confidential information. The base URL is
+restricted to HTTPS OpenRouter hosts; use `https://eu.openrouter.ai/api/v1`
+when EU in-region processing is required.
 
-Free model endpoints that log prompts or outputs are intentionally incompatible
-with this routing policy. OpenRouter may return HTTP 404 when a model slug exists
-but no endpoint satisfies `dataCollection=deny`, `zdr=true`, image input, and
-strict structured output together. Select a privacy-compatible paid endpoint or
-add a compatible model to the operation's fallback chain; do not relax the
-private-recipe data policy to make a free endpoint eligible.
+The OpenRouter account must allow training-capable free providers, and the API
+key must not have an account or guardrail-level ZDR requirement. Request-level
+`zdr: false` does not override stricter account-wide policy.
+
+Other free model endpoints that log prompts or outputs remain incompatible with
+the private routing policy unless they are explicitly reviewed and added to the
+compatibility allowlist in `src/ingestion/openrouter.ts`.
 
 The SDK's own `debugLogger` and `OPENROUTER_DEBUG` options must remain disabled:
 the SDK documentation warns that request debug output can include authorization

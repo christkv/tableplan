@@ -39,7 +39,7 @@ interface CapturedOpenRouterRequest {
   model?: string;
   models?: string[];
   provider: Record<string, unknown>;
-  response_format: { json_schema: { strict: boolean } };
+  response_format?: { json_schema: { strict: boolean } };
   messages: Array<{ content: unknown }>;
 }
 
@@ -100,7 +100,34 @@ describe("OpenRouter recipe extraction", () => {
       { type: "text", text: "Read the recipe in this private image and extract its structured fields." },
       { type: "image_url", image_url: { url: "data:image/png;base64,AQID" } },
     ]);
-    expect(body.response_format.json_schema.strict).toBe(true);
+    expect(body.response_format?.json_schema.strict).toBe(true);
+  });
+
+  it("supports the collecting NVIDIA free models without unsupported structured-output routing", async () => {
+    const content = `Recipe extracted:\n\`\`\`json\n${JSON.stringify(draft)}\n\`\`\``;
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(
+      chatCompletion("nvidia/nemotron-3-ultra-550b-a55b:free", content),
+    ), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await extractRecipeWithOpenRouter({
+      apiKey: "key",
+      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    }, { kind: "text", source: "Tomato soup recipe" }, fetchMock);
+
+    expect(result.draft.title).toBe("Tomato Soup");
+    const body = await (fetchMock.mock.calls[0][0] as Request).clone().json() as CapturedOpenRouterRequest;
+    expect(body.response_format).toBeUndefined();
+    expect(body.provider).toEqual({ require_parameters: true, data_collection: "allow", zdr: false, allow_fallbacks: true });
+    expect(body.messages[0].content).toContain("Return only one valid JSON object");
+  });
+
+  it("applies the collecting compatibility policy to the NVIDIA free vision model", () => {
+    const request = buildOpenRouterRecipeRequest(
+      { kind: "image", bytes: new Uint8Array([1]).buffer, mediaType: "image/png" },
+      ["nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"],
+    );
+    expect(request.responseFormat).toBeUndefined();
+    expect(request.provider).toMatchObject({ dataCollection: "allow", zdr: false, requireParameters: true });
   });
 
   it("rejects unsupported or empty vision inputs before making a request", async () => {

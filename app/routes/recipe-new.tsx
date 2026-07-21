@@ -168,6 +168,7 @@ export default function RecipeNew({ actionData }: Route.ComponentProps) {
           </div>}
         {uploadError ? <p className="form-error" role="alert">{uploadError}</p> : null}
         {actionData?.error ? <p className="form-error" role="alert">{actionData.error}</p> : null}
+        <p className="ai-processing-notice">When cloud AI extraction is enabled, recipe text and files are sent to OpenRouter and NVIDIA. The configured free models may log and use that content to improve their services, so do not include personal or confidential information.</p>
         <div className="form-command-row"><Button type="submit" disabled={busy}><Sparkles size={17} /> {busy ? "Preparing recipe..." : "Extract recipe"}</Button></div>
       </Form>
     </div>

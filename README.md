@@ -34,6 +34,7 @@ npm run check
 
 ## Documentation
 
+- [Initial Cloudflare setup](INITIAL_SETUP.md)
 - [Implementation progress](docs/implementation-progress.md)
 - [Local development](docs/operations/local-development.md)
 - [Recipe import](docs/operations/recipe-import.md)

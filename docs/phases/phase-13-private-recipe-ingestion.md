@@ -342,7 +342,9 @@ Workflow steps:
 4. **Extract structured recipe**
    - Call the operation-specific OpenRouter text or vision model chain.
    - Require JSON Schema output.
-   - Require no-data-collection and zero-data-retention provider routing.
+   - Require no-data-collection and zero-data-retention provider routing by
+     default. Explicitly reviewed collecting model IDs must use a narrow
+     compatibility allowlist and show a user-facing processing disclosure.
    - Treat source text as untrusted data, not instructions. The model gets no
      tools and cannot make network or database calls.
 5. **Validate and normalize**

@@ -13,8 +13,8 @@ Never share D1 databases, API keys, OAuth credentials, Vectorize indexes, or que
 Create environment-specific resources and replace placeholder IDs in `wrangler.jsonc`:
 
 ```bash
-npx wrangler d1 create meal-planner-preview
-npx wrangler d1 create meal-planner-production
+npx wrangler d1 create meal-planner-preview --env preview --binding DB --update-config
+npx wrangler d1 create meal-planner-production --env production --binding DB --update-config
 npx wrangler r2 bucket create meal-planner-private-recipes-preview
 npx wrangler r2 bucket create meal-planner-private-recipes-production
 npx wrangler queues create tableplan-email-preview
@@ -59,8 +59,9 @@ and other non-secret feature configuration may be Wrangler variables.
 Before deployment, set `OPENROUTER_TEXT_MODEL` and
 `OPENROUTER_VISION_MODEL` to appropriate OpenRouter model IDs. Each has
 an optional comma-separated `*_FALLBACK_MODELS` chain of up to three IDs. The
-vision chain must accept image input; all selected endpoints must support strict
-JSON Schema and zero-data-retention routing. Keep
+vision chain must accept image input. The configured NVIDIA free models use the
+documented collecting/unstructured compatibility path; all other selected
+endpoints must support strict JSON Schema and zero-data-retention routing. Keep
 `OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`, or use the official EU
 endpoint when required. See `docs/operations/private-recipe-ingestion.md` for
 the complete extraction configuration.
@@ -73,6 +74,12 @@ to control log volume. Tableplan never intentionally logs private recipe source
 contents or provider credentials.
 
 ## Migrate and Deploy Preview
+
+The Cloudflare Vite plugin selects a Wrangler environment at build time. The
+repository deployment scripts set `CLOUDFLARE_ENV` before building and then
+deploy the generated, flattened configuration. Do not deploy this project with
+`wrangler deploy --env preview` or `wrangler deploy --env production`; those
+flags cannot change the environment selected by an earlier Vite build.
 
 ```bash
 npm run check

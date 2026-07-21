@@ -216,6 +216,7 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .selected-upload strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .selected-upload small { color: var(--muted); font-size: 10px; }
 .selected-upload .button-icon { width: 36px; height: 36px; color: var(--muted); }
+.ai-processing-notice { padding: 10px 12px; border-left: 3px solid #c78a25; color: var(--muted); background: #fff8eb; font-size: 11px; line-height: 1.5; }
 .form-command-row, .review-command-row { display: flex; justify-content: flex-end; gap: 8px; }
 .ingestion-status { min-height: 180px; padding: 28px; display: flex; align-items: flex-start; gap: 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
 .ingestion-status svg { flex: 0 0 auto; color: var(--accent); }
