@@ -289,7 +289,9 @@ failures. Do not enable verbose logging permanently in a deployed environment.
 ## 12. Import recipe data when required
 
 Database migrations create the schema but do not load the full recipe catalog.
-Stage, review, and export the catalog using `docs/operations/recipe-import.md`.
+Follow the step-by-step **Full Catalog Import to Preview** procedure in
+`docs/operations/recipe-import.md`. Stage, review, and export the catalog before
+running the remote mutation.
 Only after reviewing its QA report, apply the generated SQL to preview:
 
 ```bash
