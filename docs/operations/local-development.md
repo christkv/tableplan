@@ -16,12 +16,14 @@ npm run import:sample
 npm run dev
 ```
 
-Open the URL printed by the Vite development server. It normally uses
-`http://localhost:5173`, but selects the next available port when another server
-already occupies that port. HTTP origins on `localhost`, `127.0.0.1`, and `::1`
-are trusted on any port only in `APP_ENV=local`. Preview and production continue
-to trust only their configured public origin. Cloudflare bindings run through
-the local Worker runtime.
+Open the URL printed by the Vite development server. It binds to IPv4 loopback
+and normally uses `http://127.0.0.1:5173`, but selects the next available port
+when another server already occupies that port. Pinning the loopback address
+prevents an existing IPv4 listener from being missed when `localhost` resolves
+to IPv6. HTTP origins on `localhost`, `127.0.0.1`, and `::1` are trusted on any
+port only in `APP_ENV=local`. Preview and production continue to trust only
+their configured public origin. Cloudflare bindings run through the local
+Worker runtime.
 
 ## Local Test Account
 

@@ -16,7 +16,7 @@ Local defaults in `wrangler.jsonc` are:
 ```text
 PDF_MODE=html-preview
 EMAIL_MODE=capture
-PUBLIC_APP_URL=http://localhost:5173
+PUBLIC_APP_URL=http://127.0.0.1:5173
 ```
 
 Recipe, plan, shopping-list, and combined export endpoints return dedicated

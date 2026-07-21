@@ -11,7 +11,7 @@ Use the API for explicit HTTP integrations and structured data access. Read
 ## Workflow
 
 1. Obtain the base URL from the user or environment. Use
-   `http://localhost:5173` only for a local instance.
+   `http://127.0.0.1:5173` only for a local instance.
 2. Obtain an API key through a secret-management mechanism. Never ask the user
    to paste a key into a document, prompt template, or source file.
 3. Select only the scopes required for the task.

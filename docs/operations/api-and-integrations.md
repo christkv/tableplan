@@ -35,7 +35,7 @@ Keep secrets in environment variables and prevent shell history or process logs
 from capturing them.
 
 ```bash
-export TABLEPLAN_URL=http://localhost:5173
+export TABLEPLAN_URL=http://127.0.0.1:5173
 export TABLEPLAN_API_KEY=mp_test_REDACTED
 
 curl -sS "$TABLEPLAN_URL/api/v1/recipes/search?q=chickpea&tag=main-dish&tag=healthy&tagMatch=all&limit=5" \
