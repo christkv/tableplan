@@ -16,6 +16,7 @@ describe("gateway configuration", () => {
       GATEWAY_PORT: 8788,
       MONGODB_DATABASE: "application_local",
       LOG_LEVEL: "INFO",
+      BETTER_AUTH_API_TIMEOUT_MS: 10_000,
     });
   });
 

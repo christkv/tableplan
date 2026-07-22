@@ -52,4 +52,106 @@ describe("gateway-backed authentication", () => {
     expect(response.status).toBe(200);
     expect(binding.fetch).toHaveBeenCalledOnce();
   });
+
+  it("shows callback gateway failures on the application auth error page", async () => {
+    const binding = { fetch: vi.fn(async () => Response.json({ error: "gateway_unavailable" }, { status: 503 })) };
+    const env = {
+      MONGODB_GATEWAY: binding,
+      MONGODB_GATEWAY_SERVICE_TOKEN: "service-token",
+      APP_ENV: "preview",
+      LOG_LEVEL: "ERROR",
+    } as unknown as CloudflareEnvironment;
+
+    const response = await handleAuthRequest(
+      new Request("https://tableplan.example.test/api/auth/callback/google?code=secret-code"),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/auth/error");
+    expect(location.searchParams.get("error")).toBe("gateway_unavailable");
+    expect(location.searchParams.get("request_id")).toMatch(/^[0-9a-f-]{36}$/);
+    expect(location.toString()).not.toContain("secret-code");
+  });
+
+  it("adds the correlated request identifier to Better Auth error redirects", async () => {
+    const binding = {
+      // Response.redirect uses an immutable header guard, matching a redirect
+      // returned through a Cloudflare service binding.
+      fetch: vi.fn(async (_request: Request) => Response.redirect(
+        "https://tableplan.example.test/auth/error?error=unable_to_create_user",
+        302,
+      )),
+    };
+    const env = {
+      MONGODB_GATEWAY: binding,
+      MONGODB_GATEWAY_SERVICE_TOKEN: "service-token",
+      APP_ENV: "preview",
+      LOG_LEVEL: "ERROR",
+    } as unknown as CloudflareEnvironment;
+
+    const response = await handleAuthRequest(
+      new Request("https://tableplan.example.test/api/auth/callback/google"),
+      env,
+      {} as ExecutionContext,
+    );
+
+    const location = new URL(response.headers.get("location")!);
+    const forwardedRequest = binding.fetch.mock.calls[0]![0] as Request;
+    expect(location.searchParams.get("error")).toBe("unable_to_create_user");
+    expect(location.searchParams.get("request_id")).toBe(forwardedRequest.headers.get("x-request-id"));
+  });
+
+  it("clones immutable headers on successful OAuth redirects", async () => {
+    const binding = {
+      // Response.redirect has an immutable header guard, matching a redirect
+      // returned through a Cloudflare service binding.
+      fetch: vi.fn(async () => Response.redirect(
+        "https://tableplan.example.test/recipes",
+        302,
+      )),
+    };
+    const env = {
+      MONGODB_GATEWAY: binding,
+      MONGODB_GATEWAY_SERVICE_TOKEN: "service-token",
+      APP_ENV: "preview",
+      LOG_LEVEL: "ERROR",
+    } as unknown as CloudflareEnvironment;
+
+    const response = await handleAuthRequest(
+      new Request("https://tableplan.example.test/api/auth/callback/google?code=valid-code"),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://tableplan.example.test/recipes");
+    expect(() => response.headers.set("x-router-merged", "true")).not.toThrow();
+    expect(response.headers.get("x-router-merged")).toBe("true");
+  });
+
+  it("returns a safe diagnostic response when a non-callback gateway request throws", async () => {
+    const binding = { fetch: vi.fn(async () => { throw new Error("mongodb://user:password@private-host"); }) };
+    const env = {
+      MONGODB_GATEWAY: binding,
+      MONGODB_GATEWAY_SERVICE_TOKEN: "service-token",
+      APP_ENV: "preview",
+      LOG_LEVEL: "ERROR",
+    } as unknown as CloudflareEnvironment;
+
+    const response = await handleAuthRequest(
+      new Request("https://tableplan.example.test/api/auth/get-session"),
+      env,
+      {} as ExecutionContext,
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(502);
+    expect(body).toContain("authentication_service_unavailable");
+    expect(body).toContain("requestId");
+    expect(body).not.toContain("private-host");
+    expect(body).not.toContain("password");
+  });
 });

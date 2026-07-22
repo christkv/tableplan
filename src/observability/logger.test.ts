@@ -71,4 +71,12 @@ describe("errorLogContext", () => {
       errorMessage: "Extraction failed",
     });
   });
+
+  it("redacts credentials and OAuth secrets while preserving diagnostic context", () => {
+    const context = errorLogContext(new Error("mongodb+srv://user:password@cluster.example/db?code=oauth-code&state=oauth-state Bearer service-token"));
+    expect(context).toEqual({
+      errorName: "Error",
+      errorMessage: "mongodb+srv://[REDACTED]@cluster.example/db?code=[REDACTED]&state=[REDACTED] Bearer [REDACTED]",
+    });
+  });
 });

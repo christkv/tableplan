@@ -83,6 +83,14 @@ Enable the required Cloudflare products and verify the email sender domain befor
 
 Only the gateway Worker receives Atlas and Better Auth secrets:
 
+Generate `BETTER_AUTH_SECRET` yourself; it is not the Better Auth Dash API key. Store the generated value in a password manager because Cloudflare will not reveal it after upload, and keep it stable across deployments. Changing it invalidates active sessions and in-flight OAuth state.
+
+```bash
+openssl rand -base64 32
+```
+
+Paste that value when the `secret put` command prompts for `BETTER_AUTH_SECRET`. Never reuse `BETTER_AUTH_API_KEY`, the Google client secret, or the service token as the auth secret.
+
 ```bash
 npx wrangler secret put MONGODB_URI --config wrangler.gateway.jsonc --env preview
 npx wrangler secret put MONGODB_GATEWAY_SERVICE_TOKEN --config wrangler.gateway.jsonc --env preview
@@ -96,6 +104,8 @@ npx wrangler secret put BETTER_AUTH_API_KEY --config wrangler.gateway.jsonc --en
 npx wrangler secret put GOOGLE_CLIENT_ID --config wrangler.gateway.jsonc --env preview
 npx wrangler secret put GOOGLE_CLIENT_SECRET --config wrangler.gateway.jsonc --env preview
 ```
+
+`BETTER_AUTH_API_KEY` is the separate value issued by Better Auth Dash for its infrastructure plugin. It is not used to sign Tableplan sessions or OAuth state.
 
 The application Worker receives the matching service token and application-owned provider secrets:
 
@@ -117,6 +127,8 @@ Create the project with:
 - Auth base path: `/api/auth`
 
 Store the Dash key on the gateway Worker. Use the public application URL for ownership verification.
+
+Do not let Better Auth Dash synchronize Cloudflare Worker environment variables. In this architecture, the application Worker must not receive `BETTER_AUTH_SECRET`, `BETTER_AUTH_API_KEY`, `GOOGLE_CLIENT_ID`, or `GOOGLE_CLIENT_SECRET`, and the gateway must receive them through `wrangler secret put` as encrypted `secret_text` bindings—not dashboard-created plaintext variables. A normal Wrangler deployment intentionally removes undeclared plaintext variables.
 
 ## 7. Deploy and verify
 

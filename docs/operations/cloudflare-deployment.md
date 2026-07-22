@@ -43,7 +43,11 @@ npx wrangler secret put OPENROUTER_API_KEY --env preview
 
 Optional gateway secrets are `BETTER_AUTH_API_KEY`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`; include `--config wrangler.gateway.jsonc`. Repeat all commands with `--env production` and isolated values.
 
+The gateway sets `BETTER_AUTH_API_TIMEOUT_MS=10000` for Better Auth Dash management/JWKS calls. The upstream plugin default is three seconds, which is too close to normal cross-service latency and can surface as `AbortError: The operation was aborted` on `/api/auth/dash/*` routes.
+
 `MONGODB_GATEWAY_SERVICE_TOKEN` must match on the application and gateway. Never give the application Worker `MONGODB_URI`; only `MongoGatewayDO` receives the Atlas credential.
+
+Do not use Better Auth Dash to write Cloudflare environment variables for either Worker. Dash-managed values are plain Worker variables and can also place gateway-only credentials on the application Worker. Provision authentication credentials only with the `wrangler secret put ... --config wrangler.gateway.jsonc` commands above. If a credential has ever appeared as a plaintext variable or in deployment output, remove the variable and rotate the provider credential.
 
 The gateway has `workers_dev: false`, so it has no public `workers.dev` endpoint. `MONGO_LOCATION_HINT=weur`, `MONGODB_MAX_POOL_SIZE=10`, `MONGODB_MIN_POOL_SIZE=0`, and one named Durable Object keep it near Atlas while bounding connection growth. Confirm `weur` matches the Atlas region before deployment. Atlas network access must also permit Cloudflare Worker egress.
 
@@ -99,5 +103,26 @@ The command validates the exact environment/database mapping, creates missing co
 ## Smoke tests
 
 Verify application health reports `mongodb-gateway` through the private binding, then test authentication/Dash, catalog search, household isolation, planning, shopping, PDF, email/share links, invitation acceptance, private recipe ingestion, API keys, and MCP.
+
+## Authentication error diagnostics
+
+The gateway writes sanitized authentication failures to the Atlas `auth_error_events` collection as a fallback for Cloudflare observability. Events include the reference shown on `/auth/error` as `requestId`, the auth route, source, error name/code/message, status, and timestamp. OAuth codes, state, tokens, cookies, credentials, and arbitrary provider response objects are not stored. A TTL index removes events after 14 days.
+
+Find a displayed reference in Atlas Data Explorer or `mongosh`:
+
+```javascript
+db.auth_error_events.find(
+  { requestId: "<reference-from-error-page>" },
+  { expiresAt: 0 }
+).sort({ createdAt: -1 })
+```
+
+Inspect the most recent failures:
+
+```javascript
+db.auth_error_events.find({}, { expiresAt: 0 }).sort({ createdAt: -1 }).limit(20)
+```
+
+Apply the managed collection and TTL indexes before deploying a gateway version that records these events. The gateway waits for every queued auth-error insert before returning the authentication response or redirect, and also registers each insert with the Durable Object's `waitUntil`. If Atlas itself is unavailable, the persistence failure is emitted to Cloudflare observability without replacing the original authentication error.
 
 Cloudflare Worker code can be rolled back using deployment versions. Database changes are forward-fixed or restored from MongoDB backups; there is no alternate application storage engine.

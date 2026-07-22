@@ -24,6 +24,7 @@ The application Worker never receives an Atlas URI. In preview and production it
 - Never put `MONGODB_URI` in the application Worker.
 - Preview and production use private service bindings, not `MONGODB_GATEWAY_URL`.
 - Keep the gateway and application service tokens identical within one environment and different across environments.
+- Generate `BETTER_AUTH_SECRET` yourself, store it only on the gateway and in a password manager, and keep it stable across deployments. It is not the Better Auth Dash API key.
 - Review index synchronization in dry-run mode before applying it.
 - Keep storage-contract changes backward-compatible during the gateway-first rollout window.
 - Do not share databases, credentials, auth secrets, OAuth clients, buckets, or queues between preview and production.

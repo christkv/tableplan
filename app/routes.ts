@@ -4,6 +4,7 @@ export default [
   index("routes/index.tsx"),
   route("favicon.ico", "routes/favicon.ts"),
   route("sign-in", "routes/sign-in.tsx"),
+  route("auth/error", "routes/auth-error.tsx"),
   route("household/join", "routes/household-join.tsx"),
   route("shared/shopping", "routes/shared-shopping-exchange.tsx"),
   route("shared/shopping/:shareId", "routes/shared-shopping.tsx"),

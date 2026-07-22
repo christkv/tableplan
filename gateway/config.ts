@@ -25,6 +25,7 @@ const gatewayConfigSchema = z.object({
   BETTER_AUTH_URL: z.string().url().default("http://127.0.0.1:5173"),
   BETTER_AUTH_SECRET: z.string().min(32).default("local-only-secret-change-before-deployment-32-chars"),
   BETTER_AUTH_API_KEY: z.string().optional(),
+  BETTER_AUTH_API_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 });

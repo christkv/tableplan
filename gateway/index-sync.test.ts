@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { indexesMatch, planCollectionIndexSync } from "./index-sync";
+import { collectionDefinitions } from "./schema";
 
 const actual = (name: string, key: Record<string, number>, options: Record<string, unknown> = {}) => ({ v: 2, name, key, ...options });
 
 describe("MongoDB index synchronization", () => {
+  it("keeps authentication error diagnostics bounded with a TTL index", () => {
+    const definition = collectionDefinitions.find((collection) => collection.name === "auth_error_events");
+    expect(definition?.indexes).toContainEqual({ key: { expiresAt: 1 }, name: "auth_error_expiry", expireAfterSeconds: 0 });
+  });
+
   it("recognizes equivalent index definitions while ignoring server metadata", () => {
     expect(indexesMatch(
       { name: "lookup", key: { householdId: 1, createdAt: -1 }, unique: true },

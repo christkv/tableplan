@@ -17,6 +17,14 @@ export interface Logger {
   error(event: string, context?: LogContext): void;
 }
 
+function redactErrorMessage(message: string): string {
+  return message
+    .replace(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi, "$1[REDACTED]@")
+    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [REDACTED]")
+    .replace(/([?&](?:code|state|token|id_token|access_token|refresh_token|client_secret)=)[^&\s]+/gi, "$1[REDACTED]")
+    .slice(0, 2_000);
+}
+
 const LEVEL_PRIORITY: Record<LogLevel, number> = {
   DEBUG: 10,
   INFO: 20,
@@ -30,8 +38,8 @@ export function resolveLogLevel(env: LogEnvironment): LogLevel {
 }
 
 export function errorLogContext(error: unknown): LogContext {
-  if (error instanceof Error) return { errorName: error.name, errorMessage: error.message };
-  return { errorMessage: String(error) };
+  if (error instanceof Error) return { errorName: error.name, errorMessage: redactErrorMessage(error.message) };
+  return { errorMessage: redactErrorMessage(String(error)) };
 }
 
 function emit(level: LogLevel, component: string, event: string, context: LogContext): void {

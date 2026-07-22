@@ -65,6 +65,14 @@ Do not recreate existing resources. Verify the production email sender domain an
 
 Gateway-only Atlas and Better Auth secrets:
 
+Generate a new production-only `BETTER_AUTH_SECRET`; it is an application secret, not a value obtained from Better Auth Dash. Store it in a password manager because Cloudflare will not reveal it after upload, and keep it stable across deployments. Changing it invalidates active sessions and in-flight OAuth state.
+
+```bash
+openssl rand -base64 32
+```
+
+Paste that value when the `secret put` command prompts for `BETTER_AUTH_SECRET`. Never reuse the preview secret, `BETTER_AUTH_API_KEY`, the Google client secret, or the service token.
+
 ```bash
 npx wrangler secret put MONGODB_URI --config wrangler.gateway.jsonc --env production
 npx wrangler secret put MONGODB_GATEWAY_SERVICE_TOKEN --config wrangler.gateway.jsonc --env production
@@ -78,6 +86,8 @@ npx wrangler secret put BETTER_AUTH_API_KEY --config wrangler.gateway.jsonc --en
 npx wrangler secret put GOOGLE_CLIENT_ID --config wrangler.gateway.jsonc --env production
 npx wrangler secret put GOOGLE_CLIENT_SECRET --config wrangler.gateway.jsonc --env production
 ```
+
+`BETTER_AUTH_API_KEY` is the separate value issued by Better Auth Dash for its infrastructure plugin. It is not used to sign Tableplan sessions or OAuth state.
 
 Application-owned secrets:
 

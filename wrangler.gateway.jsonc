@@ -28,7 +28,8 @@
     "MONGODB_MAX_CONNECTING": "2",
     "GATEWAY_MAX_BODY_BYTES": "1048576",
     "GATEWAY_MAX_IN_FLIGHT": "100",
-    "BETTER_AUTH_URL": "http://127.0.0.1:5173"
+    "BETTER_AUTH_URL": "http://127.0.0.1:5173",
+    "BETTER_AUTH_API_TIMEOUT_MS": "10000"
   },
   "env": {
     "preview": {
@@ -51,7 +52,8 @@
         "MONGODB_MAX_CONNECTING": "2",
         "GATEWAY_MAX_BODY_BYTES": "1048576",
         "GATEWAY_MAX_IN_FLIGHT": "100",
-        "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev"
+        "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
+        "BETTER_AUTH_API_TIMEOUT_MS": "10000"
       }
     },
     "production": {
@@ -74,7 +76,8 @@
         "MONGODB_MAX_CONNECTING": "2",
         "GATEWAY_MAX_BODY_BYTES": "1048576",
         "GATEWAY_MAX_IN_FLIGHT": "100",
-        "BETTER_AUTH_URL": "https://meal-planner.example.com"
+        "BETTER_AUTH_URL": "https://meal-planner.example.com",
+        "BETTER_AUTH_API_TIMEOUT_MS": "10000"
       }
     }
   }

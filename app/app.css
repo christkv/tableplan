@@ -379,6 +379,7 @@ code { padding: 2px 5px; border-radius: 4px; background: #e8ebe7; font-size: 0.9
 .error-page > div { max-width: 520px; }
 .error-page h1 { font-size: 34px; }
 .error-page a { color: var(--accent); font-weight: 700; }
+.error-reference { margin: 20px 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
 .auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, 0.88fr) minmax(460px, 1.12fr); background: var(--surface); }
 .auth-brand-panel { min-height: 100vh; padding: 32px 46px; display: flex; flex-direction: column; justify-content: space-between; background: #163f31; color: white; }
 .auth-brand { padding-left: 0; color: white; }

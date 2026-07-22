@@ -41,8 +41,18 @@ export default function SignIn() {
 
   async function signInWithGoogle() {
     setPending(true); setError(null);
-    const result = await authClient.signIn.social({ provider: "google", callbackURL: returnTo });
-    if (result?.error) { setError(result.error.message ?? "Google sign-in failed"); setPending(false); }
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: returnTo,
+        errorCallbackURL: "/auth/error",
+      });
+      if (result?.error) setError(result.error.message ?? "Google sign-in failed");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Google sign-in failed");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
