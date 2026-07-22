@@ -1,6 +1,6 @@
 import type { Db, Document } from "mongodb";
 
-import { API_SCOPES, apiKeyPrefix, hashApiKey, randomApiToken, type ApiKeyAuthentication, type ApiKeyView, type ApiScope } from "../src/domain/api-keys";
+import { API_SCOPES, apiKeyPrefix, hashApiKey, randomApiToken, type ApiKeyAuthentication, type ApiKeyView, type ApiScope } from "../../domain/api-keys";
 
 type StringDocument = Document & { _id: string };
 

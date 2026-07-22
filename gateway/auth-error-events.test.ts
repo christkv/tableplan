@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createMongoAuthErrorRecorder } from "./auth-error-events";
+import { createMongoAuthErrorRecorder } from "../src/storage/mongodb/auth-error-events";
 
 describe("MongoDB authentication error recording", () => {
   it("schedules a correlated diagnostic event with a finite retention window", async () => {

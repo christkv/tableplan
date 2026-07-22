@@ -1,7 +1,7 @@
 import type { Db, Document, Filter } from "mongodb";
 
-import { normalizeRecipeSearch } from "../src/domain/recipe-search";
-import type { RecipeAccessContext, RecipeDetail, RecipeSearchInput, RecipeSearchResult, RecipeSearchTotal, RecipeSummary, RecipeTagOption } from "../src/domain/recipes";
+import { normalizeRecipeSearch } from "../../domain/recipe-search";
+import type { RecipeAccessContext, RecipeDetail, RecipeSearchInput, RecipeSearchResult, RecipeSearchTotal, RecipeSummary, RecipeTagOption } from "../../domain/recipes";
 
 interface RecipeDocument extends Document {
   _id: string;

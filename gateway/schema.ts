@@ -12,7 +12,6 @@ const objectValidator = (required: string[], properties: Document): Document => 
 
 export const collectionDefinitions: CollectionDefinition[] = [
   { name: "users", indexes: [{ key: { email: 1 }, name: "user_email_unique", unique: true }] },
-  { name: "sessions", indexes: [{ key: { token: 1 }, name: "session_token_unique", unique: true }, { key: { expiresAt: 1 }, name: "session_expiry" }, { key: { userId: 1 }, name: "session_user" }] },
   { name: "accounts", indexes: [{ key: { providerId: 1, accountId: 1 }, name: "account_provider_unique", unique: true }, { key: { userId: 1 }, name: "account_user" }] },
   { name: "verifications", indexes: [{ key: { identifier: 1, value: 1 }, name: "verification_lookup" }, { key: { expiresAt: 1 }, name: "verification_expiry" }] },
   { name: "households", indexes: [], validator: objectValidator(["name"], { name: { bsonType: "string" }, timezone: { bsonType: ["string", "null"] } }) },

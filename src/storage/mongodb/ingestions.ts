@@ -1,13 +1,12 @@
-import type { ClientSession, Db, Document } from "mongodb";
+import type { Db, Document } from "mongodb";
 
-import { parseIngredientLine } from "../src/domain/quantity/parse";
-import type { RecipeAccessContext } from "../src/domain/recipes";
-import { normalizeIngredientName, normalizeTag, stableId } from "../src/import/normalize";
-import { normalizeRecipeDraft } from "../src/ingestion/extract";
-import type { IngredientReview, PublishRecipeInput, RecipeDraft, RecipeIngestionStatus, RecipeIngestionView, RecipeInputKind } from "../src/ingestion/types";
+import { parseIngredientLine } from "../../domain/quantity/parse";
+import type { RecipeAccessContext } from "../../domain/recipes";
+import { normalizeIngredientName, normalizeTag, stableId } from "../../import/normalize";
+import { normalizeRecipeDraft } from "../../ingestion/extract";
+import type { IngredientReview, PublishRecipeInput, RecipeDraft, RecipeIngestionStatus, RecipeIngestionView, RecipeInputKind } from "../../ingestion/types";
 
 type StringDocument = Document & { _id: string };
-type TransactionRunner = <T>(operation: (session: ClientSession) => Promise<T>) => Promise<T>;
 
 export interface MongoIngestionStore {
   create(input: { userId: string; householdId: string; inputKind: RecipeInputKind; origin: "manual" | "paste" | "upload"; filename?: string; mediaType: string }): Promise<string>;
@@ -22,7 +21,7 @@ export interface MongoIngestionStore {
   updateOwned(input: { recipeId: string; access: RecipeAccessContext; draft: RecipeDraft }): Promise<void>;
 }
 
-export function createMongoIngestionStore(database: Db, withTransaction: TransactionRunner): MongoIngestionStore {
+export function createMongoIngestionStore(database: Db): MongoIngestionStore {
   const ingestions = database.collection<StringDocument>("recipe_ingestions");
   const recipes = database.collection<StringDocument>("recipes");
   const ingredients = database.collection<StringDocument>("ingredients");
@@ -108,24 +107,22 @@ export function createMongoIngestionStore(database: Db, withTransaction: Transac
       const selections = new Map(((job.ingredientReviews as IngredientReview[] | undefined) ?? []).map((item) => [item.position, { ingredientId: item.ingredientId, rememberAlias: false }]));
       input.ingredientSelections.forEach((item) => selections.set(item.position, item));
       const embedded = await recipeIngredients(draft, input.householdId, selections); const recipeId = crypto.randomUUID(); const now = new Date();
-      return withTransaction(async (session) => {
-        const claimed = await ingestions.findOneAndUpdate(
+      const claimed = await ingestions.findOneAndUpdate(
           { _id: input.ingestionId, userId: input.userId, householdId: input.householdId, status: { $in: ["review_ready", "failed"] } },
           { $set: { status: "publishing", progressMessage: "Publishing recipe", updatedAt: now } },
-          { session, returnDocument: "after" },
+          { returnDocument: "after" },
         );
         if (!claimed) {
-          const existing = await ingestions.findOne({ _id: input.ingestionId, userId: input.userId, householdId: input.householdId }, { session });
+          const existing = await ingestions.findOne({ _id: input.ingestionId, userId: input.userId, householdId: input.householdId });
           if (existing?.status === "published" && existing.recipeId) return String(existing.recipeId);
           throw new Error("Recipe ingestion is not ready to publish");
         }
-        await recipes.insertOne({ _id: recipeId, sourceId: `user:${input.userId}:${recipeId}`, name: draft.title, description: draft.description, servings: draft.servings, servingSize: draft.servingSize, qualityFlags: draft.warnings, tags: draft.tags.map(normalizeTag), visibility: input.visibility, ownerUserId: input.userId, ownerHouseholdId: input.householdId, createdByUserId: input.userId, origin: job.origin, status: "active", recipeIngredients: embedded, steps: draft.steps.map((instruction, position) => ({ position, instruction, parseStatus: "parsed" })), createdAt: now, updatedAt: now }, { session });
+        await recipes.insertOne({ _id: recipeId, sourceId: `user:${input.userId}:${recipeId}`, name: draft.title, description: draft.description, servings: draft.servings, servingSize: draft.servingSize, qualityFlags: draft.warnings, tags: draft.tags.map(normalizeTag), visibility: input.visibility, ownerUserId: input.userId, ownerHouseholdId: input.householdId, createdByUserId: input.userId, origin: job.origin, status: "active", recipeIngredients: embedded, steps: draft.steps.map((instruction, position) => ({ position, instruction, parseStatus: "parsed" })), createdAt: now, updatedAt: now });
         const remembered = embedded.filter((_, position) => selections.get(position)?.ingredientId && selections.get(position)?.rememberAlias);
-        for (const item of remembered) await aliases.updateOne({ householdId: input.householdId, normalizedAlias: normalizeIngredientName(item.ingredient) }, { $set: { ingredientId: item.canonicalIngredientId, updatedAt: now }, $setOnInsert: { _id: crypto.randomUUID(), createdByUserId: input.userId, createdAt: now } }, { upsert: true, session });
-        await database.collection<StringDocument>("recipe_mutation_events").insertOne({ _id: crypto.randomUUID(), recipeId, ingestionId: input.ingestionId, userId: input.userId, eventType: "created", createdAt: now }, { session });
-        await ingestions.updateOne({ _id: input.ingestionId, userId: input.userId }, { $set: { status: "published", recipeId, progressMessage: "Recipe published", completedAt: now, updatedAt: now } }, { session });
+        for (const item of remembered) await aliases.updateOne({ householdId: input.householdId, normalizedAlias: normalizeIngredientName(item.ingredient) }, { $set: { ingredientId: item.canonicalIngredientId, updatedAt: now }, $setOnInsert: { _id: crypto.randomUUID(), createdByUserId: input.userId, createdAt: now } }, { upsert: true });
+        await database.collection<StringDocument>("recipe_mutation_events").insertOne({ _id: crypto.randomUUID(), recipeId, ingestionId: input.ingestionId, userId: input.userId, eventType: "created", createdAt: now });
+        await ingestions.updateOne({ _id: input.ingestionId, userId: input.userId }, { $set: { status: "published", recipeId, progressMessage: "Recipe published", completedAt: now, updatedAt: now } });
         return recipeId;
-      });
     },
     async setVisibility(recipeId, access, visibility) {
       await requireMember(access);

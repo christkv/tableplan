@@ -6,7 +6,7 @@ The catalog importer streams `data/recipes_ingredients.csv` directly into MongoD
 
 ## Quick start
 
-Prerequisites: Node.js 22+, a transaction-capable local MongoDB instance on port `27017`, and the source CSV in `data/`.
+Prerequisites: Node.js 22+, a local MongoDB instance on port `27017`, and the source CSV in `data/`.
 
 ```bash
 npm install
@@ -23,7 +23,7 @@ Local data is isolated in `application_local`. The gateway listens at `http://12
 
 Keep local MongoDB indexes synchronized with the code definitions using `npm run gateway:indexes:sync:local -- --dry-run`, followed by `npm run gateway:indexes:sync:local`. Preview and production targets are documented in the Cloudflare deployment runbook.
 
-Logging defaults to `INFO`. Set `LOG_LEVEL=DEBUG`, `INFO`, or `ERROR` independently in `.dev.vars` (application Worker) and `.env.gateway.local` (MongoDB gateway). Gateway `DEBUG` logs include sanitized MongoDB command payloads and durations; INFO retains lifecycle and RPC summaries without query details.
+Logging defaults to `INFO`. Set `LOG_LEVEL=DEBUG`, `INFO`, or `ERROR` independently in `.dev.vars` (application Worker) and `.env.gateway.local` (MongoDB gateway). Gateway `DEBUG` logs include sanitized MongoDB command payloads and durations; INFO retains lifecycle messages without query details. The gateway exposes MongoDB operations only. Domain stores and Better Auth run in the application Worker, and active sessions use a strongly consistent Cloudflare Durable Object rather than Atlas.
 
 `npm run import:sample` intentionally stops after 5,000 recipes. To import the entire raw catalog into the local database, omit the limit:
 

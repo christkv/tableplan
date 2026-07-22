@@ -1,7 +1,7 @@
 import type { Db, Document, Filter } from "mongodb";
 import { describe, expect, it, vi } from "vitest";
 
-import { createMongoRecipeStore } from "./recipes";
+import { createMongoRecipeStore } from "../src/storage/mongodb/recipes";
 
 function recipe(id: string, name = id) {
   return {

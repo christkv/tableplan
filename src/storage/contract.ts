@@ -9,7 +9,7 @@ import type { ApiKeyAuthentication, ApiKeyView, ApiScope } from "../domain/api-k
 import type { PublishRecipeInput, RecipeDraft, RecipeIngestionStatus, RecipeIngestionView, RecipeInputKind } from "../ingestion/types";
 import type { HouseholdInvitationEmailRecord, HouseholdInvitationView, HouseholdInviteRole, HouseholdOverview, HouseholdRelationship } from "../domain/households";
 
-export const STORAGE_CONTRACT_VERSION = "2026-07-22.1" as const;
+export const STORAGE_CONTRACT_VERSION = "2026-07-23.1" as const;
 
 export const storageBackendSchema = z.literal("mongodb-gateway");
 export type StorageBackend = z.infer<typeof storageBackendSchema>;

@@ -9,7 +9,7 @@ import { Command } from "commander";
 import { parse } from "csv-parse";
 
 import { createMongoRuntime, type MongoConnectionConfig } from "../gateway/mongo";
-import { refreshCatalogRecipeFacets } from "../gateway/recipes";
+import { refreshCatalogRecipeFacets } from "../src/storage/mongodb/recipes";
 import { UNITS } from "../src/domain/quantity/units";
 import { parseRecipeRow, type CsvRecipeRow, type ParsedRecipeRow } from "../src/import/recipe-parser";
 

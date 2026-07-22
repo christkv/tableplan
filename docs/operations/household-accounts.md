@@ -1,6 +1,6 @@
 # Household accounts
 
-Household accounts, Better Auth users/sessions, memberships, and invitation state are stored in MongoDB through the gateway.
+Household accounts, Better Auth users, memberships, OAuth verification records, and invitation state are stored in MongoDB through the operations gateway. Active Better Auth sessions are stored in the application Worker’s strongly consistent `AuthSessionStoreDO` and are not written to MongoDB.
 
 ## Local workflow
 

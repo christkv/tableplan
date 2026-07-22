@@ -10,6 +10,7 @@
     "APP_ENV": "local",
     "LOG_LEVEL": "INFO",
     "BETTER_AUTH_URL": "http://127.0.0.1:5173",
+    "BETTER_AUTH_API_TIMEOUT_MS": "10000",
     "PUBLIC_APP_URL": "http://127.0.0.1:5173",
     "PDF_MODE": "html-preview",
     "EMAIL_MODE": "capture",
@@ -34,11 +35,13 @@
   ],
   "durable_objects": {
     "bindings": [
-      { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
+      { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" },
+      { "name": "AUTH_SESSION_STORE", "class_name": "AuthSessionStoreDO" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["RecipeIngestionAgent"] }
+    { "tag": "v1", "new_sqlite_classes": ["RecipeIngestionAgent"] },
+    { "tag": "v2", "new_sqlite_classes": ["AuthSessionStoreDO"] }
   ],
   "workflows": [
     { "binding": "RECIPE_INGESTION_WORKFLOW", "name": "recipe-ingestion-local", "class_name": "RecipeIngestionWorkflow" }
@@ -50,6 +53,7 @@
         "APP_ENV": "preview",
         "LOG_LEVEL": "INFO",
         "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
+        "BETTER_AUTH_API_TIMEOUT_MS": "10000",
         "PUBLIC_APP_URL": "https://family-meal-planner-preview.christkv.workers.dev",
         "PDF_MODE": "cloud",
         "EMAIL_MODE": "cloud",
@@ -73,11 +77,12 @@
         { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-preview" }
       ],
       "services": [
-        { "binding": "MONGODB_GATEWAY", "service": "tableplan-mongodb-gateway-preview", "remote": true }
+        { "binding": "MONGODB_GATEWAY", "service": "tableplan-mongodb-operations-preview", "remote": true }
       ],
       "durable_objects": {
         "bindings": [
-          { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
+          { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" },
+          { "name": "AUTH_SESSION_STORE", "class_name": "AuthSessionStoreDO" }
         ]
       },
       "workflows": [
@@ -90,6 +95,7 @@
         "APP_ENV": "production",
         "LOG_LEVEL": "INFO",
         "BETTER_AUTH_URL": "https://meal-planner.example.com",
+        "BETTER_AUTH_API_TIMEOUT_MS": "10000",
         "PUBLIC_APP_URL": "https://meal-planner.example.com",
         "PDF_MODE": "cloud",
         "EMAIL_MODE": "cloud",
@@ -113,11 +119,12 @@
         { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-production" }
       ],
       "services": [
-        { "binding": "MONGODB_GATEWAY", "service": "tableplan-mongodb-gateway-production", "remote": true }
+        { "binding": "MONGODB_GATEWAY", "service": "tableplan-mongodb-operations-production", "remote": true }
       ],
       "durable_objects": {
         "bindings": [
-          { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
+          { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" },
+          { "name": "AUTH_SESSION_STORE", "class_name": "AuthSessionStoreDO" }
         ]
       },
       "workflows": [

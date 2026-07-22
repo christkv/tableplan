@@ -2,7 +2,7 @@
 
 ## First run
 
-Prerequisites: Node.js 22+, a transaction-capable local MongoDB instance listening on `127.0.0.1:27017`, and `data/recipes_ingredients.csv` for catalog work.
+Prerequisites: Node.js 22+, a local MongoDB instance listening on `127.0.0.1:27017`, and `data/recipes_ingredients.csv` for catalog work.
 
 ```bash
 npm install
@@ -41,7 +41,7 @@ Vite normally uses `http://127.0.0.1:5173` and selects another port if it is occ
 
 `LOG_LEVEL` accepts `DEBUG`, `INFO`, or `ERROR` and defaults to `INFO` in every environment. Configure the application Worker in `.dev.vars` and the MongoDB gateway in `.env.gateway.local`; restart the corresponding process after changing either file.
 
-At `INFO`, the gateway prints lifecycle and RPC summaries without MongoDB query payloads. `DEBUG` additionally prints MongoDB command-start and completion events with the database, collection, request/connection identifiers, actual query payload, duration, and outcome. Aggregation pipelines and their nested stages are rendered in full instead of being collapsed to `[Object]` by Node's console. Password, token, secret, authorization, cookie, credential, and API-key fields are recursively replaced with `[REDACTED]`; MongoDB authentication commands and command replies are never logged. `ERROR` prints failures only.
+At `INFO`, the gateway prints lifecycle messages without MongoDB query payloads. `DEBUG` additionally prints operation and MongoDB command events with the database, collection, request/connection identifiers, actual query payload, duration, and outcome. Aggregation pipelines and their nested stages are rendered in full instead of being collapsed to `[Object]` by Node's console. Password, token, secret, authorization, cookie, credential, and API-key fields are recursively replaced with `[REDACTED]`; MongoDB authentication commands and command replies are never logged. `ERROR` prints failures only.
 
 For a one-off verbose gateway session without editing the file:
 

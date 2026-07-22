@@ -27,13 +27,11 @@
     "MONGODB_SERVER_SELECTION_TIMEOUT_MS": "3000",
     "MONGODB_MAX_CONNECTING": "2",
     "GATEWAY_MAX_BODY_BYTES": "1048576",
-    "GATEWAY_MAX_IN_FLIGHT": "100",
-    "BETTER_AUTH_URL": "http://127.0.0.1:5173",
-    "BETTER_AUTH_API_TIMEOUT_MS": "10000"
+    "GATEWAY_MAX_IN_FLIGHT": "100"
   },
   "env": {
     "preview": {
-      "name": "tableplan-mongodb-gateway-preview",
+      "name": "tableplan-mongodb-operations-preview",
       "durable_objects": {
         "bindings": [
           { "name": "MONGO_DO", "class_name": "MongoGatewayDO" }
@@ -51,13 +49,11 @@
         "MONGODB_SERVER_SELECTION_TIMEOUT_MS": "3000",
         "MONGODB_MAX_CONNECTING": "2",
         "GATEWAY_MAX_BODY_BYTES": "1048576",
-        "GATEWAY_MAX_IN_FLIGHT": "100",
-        "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev",
-        "BETTER_AUTH_API_TIMEOUT_MS": "10000"
+        "GATEWAY_MAX_IN_FLIGHT": "100"
       }
     },
     "production": {
-      "name": "tableplan-mongodb-gateway-production",
+      "name": "tableplan-mongodb-operations-production",
       "durable_objects": {
         "bindings": [
           { "name": "MONGO_DO", "class_name": "MongoGatewayDO" }
@@ -75,9 +71,7 @@
         "MONGODB_SERVER_SELECTION_TIMEOUT_MS": "3000",
         "MONGODB_MAX_CONNECTING": "2",
         "GATEWAY_MAX_BODY_BYTES": "1048576",
-        "GATEWAY_MAX_IN_FLIGHT": "100",
-        "BETTER_AUTH_URL": "https://meal-planner.example.com",
-        "BETTER_AUTH_API_TIMEOUT_MS": "10000"
+        "GATEWAY_MAX_IN_FLIGHT": "100"
       }
     }
   }

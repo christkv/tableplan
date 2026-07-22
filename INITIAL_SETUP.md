@@ -10,13 +10,13 @@ Choose the guide for the environment you are setting up:
 
 ## Architecture
 
-The application Worker never receives an Atlas URI. In preview and production it calls a private MongoDB gateway Worker through the `MONGODB_GATEWAY` Cloudflare service binding. One named Durable Object (`pool-0`) owns the bounded `MongoClient` pool and Better Auth runtime.
+The application Worker never receives an Atlas URI. In preview and production it calls a private, operations-only MongoDB gateway Worker through the `MONGODB_GATEWAY` Cloudflare service binding. One gateway Durable Object (`pool-0`) owns the bounded `MongoClient` pool. Domain stores and Better Auth run in the application Worker; active sessions live in the application-owned `AuthSessionStoreDO`, while OAuth verification records remain in MongoDB.
 
 | Environment | Gateway | MongoDB database |
 | --- | --- | --- |
 | Local | Node gateway or local Durable Object Worker | `application_local` |
-| Preview | `tableplan-mongodb-gateway-preview` | `application_preview` |
-| Production | `tableplan-mongodb-gateway-production` | `application` |
+| Preview | `tableplan-mongodb-operations-preview` | `application_preview` |
+| Production | `tableplan-mongodb-operations-production` | `application` |
 
 ## Rules shared by every environment
 
@@ -24,12 +24,12 @@ The application Worker never receives an Atlas URI. In preview and production it
 - Never put `MONGODB_URI` in the application Worker.
 - Preview and production use private service bindings, not `MONGODB_GATEWAY_URL`.
 - Keep the gateway and application service tokens identical within one environment and different across environments.
-- Generate `BETTER_AUTH_SECRET` yourself, store it only on the gateway and in a password manager, and keep it stable across deployments. It is not the Better Auth Dash API key.
+- Generate `BETTER_AUTH_SECRET` yourself, store it only on the application Worker and in a password manager, and keep it stable across deployments. It is not the Better Auth Dash API key.
 - Review index synchronization in dry-run mode before applying it.
-- Keep storage-contract changes backward-compatible during the gateway-first rollout window.
+- Keep Mongo gateway protocol changes backward-compatible during the gateway-first rollout window.
 - Do not share databases, credentials, auth secrets, OAuth clients, buckets, or queues between preview and production.
 
-The MongoDB driver and BSON are intentionally pinned to `7.2.0` for Cloudflare Worker compatibility. `MongoGatewayDO` uses a SQLite-backed Durable Object namespace, including on Workers Free accounts, but stores no application data in Cloudflare SQLite.
+The MongoDB driver and BSON are intentionally pinned to `7.2.0` for Cloudflare Worker compatibility. `MongoGatewayDO` uses a SQLite-backed Durable Object namespace but stores no application data there. `AuthSessionStoreDO` intentionally stores Better Auth session values in application-owned Cloudflare SQLite with per-key TTL alarms.
 
 Operational references:
 

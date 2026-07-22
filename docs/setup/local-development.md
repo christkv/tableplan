@@ -5,7 +5,7 @@ This guide creates an isolated `application_local` database and runs the Tablepl
 ## 1. Prerequisites
 
 - Node.js 22 or newer.
-- A transaction-capable MongoDB instance on `127.0.0.1:27017`.
+- A MongoDB instance on `127.0.0.1:27017`.
 - The recipe source file at `data/recipes_ingredients.csv` when catalog data is needed.
 
 ```bash
@@ -57,7 +57,7 @@ To test the deployed architecture locally, stop the Node gateway and run the Clo
 npm run gateway:worker:dev
 ```
 
-Do not run both simultaneously; each listens on `127.0.0.1:8790`. They share the same domain RPC, Better Auth runtime, MongoDB stores, pool limits, service token, and DEBUG query logging.
+Do not run both simultaneously; each listens on `127.0.0.1:8790`. They expose the same operations-only MongoDB protocol, pool limits, service token, and DEBUG query logging. Better Auth and all domain stores run in the application process; local sessions use the application Worker’s `AuthSessionStoreDO` binding.
 
 The MongoDB driver and BSON are intentionally pinned to `7.2.0`. Do not remove the BSON override without proving that `gateway:worker:dev` can start and connect; newer BSON initialization currently fails at Cloudflare Worker module scope.
 

@@ -1,12 +1,17 @@
-import { createHash, randomBytes } from "node:crypto";
 import type { Db, Document } from "mongodb";
 
-import type { RecipeAccessContext } from "../src/domain/recipes";
-import { parseShareExpiryDays, type ResolvedShoppingShare, type ShoppingShareView } from "../src/domain/shopping-share";
+import type { RecipeAccessContext } from "../../domain/recipes";
+import { parseShareExpiryDays, type ResolvedShoppingShare, type ShoppingShareView } from "../../domain/shopping-share";
 import type { MongoShoppingStore } from "./shopping";
 
 interface ShareDocument extends Document { _id: string; listId: string; householdId: string; tokenPrefix: string; tokenHash: string; createdByUserId: string; expiresAt: Date | string; revokedAt?: Date | string | null; lastAccessedAt?: Date | string | null; createdAt: Date | string }
-const hash = (token: string) => createHash("sha256").update(token).digest("hex");
+const hash = async (token: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+const randomToken = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+};
 const iso = (value: Date | string | null | undefined) => value ? (value instanceof Date ? value : new Date(value)).toISOString() : null;
 
 export interface MongoShareStore {
@@ -27,13 +32,13 @@ export function createMongoShareStore(database: Db, shopping: MongoShoppingStore
     async create(input) {
       const access = { userId: input.userId, householdId: input.householdId }; await requireMember(access);
       if (!await shopping.getById(access, input.listId)) throw new Error("shopping_list_not_found");
-      const id = crypto.randomUUID(); const token = randomBytes(32).toString("base64url"); const expiresAt = new Date(Date.now() + parseShareExpiryDays(input.expiresInDays) * 86_400_000);
-      await shares.insertOne({ _id: id, listId: input.listId, householdId: input.householdId, tokenPrefix: token.slice(0, 10), tokenHash: hash(token), createdByUserId: input.userId, expiresAt, revokedAt: null, lastAccessedAt: null, createdAt: new Date() });
+      const id = crypto.randomUUID(); const token = randomToken(); const expiresAt = new Date(Date.now() + parseShareExpiryDays(input.expiresInDays) * 86_400_000);
+      await shares.insertOne({ _id: id, listId: input.listId, householdId: input.householdId, tokenPrefix: token.slice(0, 10), tokenHash: await hash(token), createdByUserId: input.userId, expiresAt, revokedAt: null, lastAccessedAt: null, createdAt: new Date() });
       return { id, token, expiresAt: expiresAt.toISOString() };
     },
     async resolve(token, expectedShareId) {
       if (!token || token.length > 256) return null;
-      const document = await shares.findOne({ tokenHash: hash(token), revokedAt: null, expiresAt: { $gt: new Date() }, ...(expectedShareId ? { _id: expectedShareId } : {}) });
+      const document = await shares.findOne({ tokenHash: await hash(token), revokedAt: null, expiresAt: { $gt: new Date() }, ...(expectedShareId ? { _id: expectedShareId } : {}) });
       return document ? { id: document._id, listId: document.listId, householdId: document.householdId, expiresAt: iso(document.expiresAt)! } : null;
     },
     async revoke(access, listId, shareId) { await requireMember(access); const result = await shares.updateOne({ _id: shareId, householdId: access.householdId, listId, revokedAt: null }, { $set: { revokedAt: new Date() } }); return Boolean(result.modifiedCount); },

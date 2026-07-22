@@ -1,13 +1,12 @@
-import type { ClientSession, Db, Document } from "mongodb";
+import type { Db, Document } from "mongodb";
 
-import { parseMealSlotDefinitions, readStoredMealSlots } from "../src/domain/planning/slots";
-import { parseMeasurementSystem } from "../src/domain/preferences";
-import { normalizedSavedSearch, type SavedRecipeSearch } from "../src/domain/saved-searches";
-import type { RecipeAccessContext, RecipeSearchInput, RecipeSummary } from "../src/domain/recipes";
+import { parseMealSlotDefinitions, readStoredMealSlots } from "../../domain/planning/slots";
+import { parseMeasurementSystem } from "../../domain/preferences";
+import { normalizedSavedSearch, type SavedRecipeSearch } from "../../domain/saved-searches";
+import type { RecipeAccessContext, RecipeSearchInput, RecipeSummary } from "../../domain/recipes";
 import type { MongoRecipeStore } from "./recipes";
 
 type StringDocument = Document & { _id: string };
-type TransactionRunner = <T>(operation: (session: ClientSession) => Promise<T>) => Promise<T>;
 
 export interface MongoTenantStore {
   isFavorite(userId: string, recipeId: string): Promise<boolean>;
@@ -24,7 +23,7 @@ export interface MongoTenantStore {
   getUserEmail(userId: string): Promise<string | null>;
 }
 
-export function createMongoTenantStore(database: Db, recipes: MongoRecipeStore, withTransaction: TransactionRunner): MongoTenantStore {
+export function createMongoTenantStore(database: Db, recipes: MongoRecipeStore): MongoTenantStore {
   const memberships = database.collection<StringDocument>("household_memberships");
   const requireMember = async (access: RecipeAccessContext) => {
     if (!await memberships.findOne({ householdId: access.householdId, userId: access.userId }, { projection: { _id: 1 } })) throw new Error("household_access_denied");
@@ -60,10 +59,8 @@ export function createMongoTenantStore(database: Db, recipes: MongoRecipeStore, 
     async updateMeasurementSystem(userId, householdId, value) {
       await requireMember({ userId, householdId });
       const measurementSystem = parseMeasurementSystem(value);
-      await withTransaction(async (session) => {
-        await database.collection<StringDocument>("user_profiles").updateOne({ _id: userId }, { $set: { preferredMeasurementSystem: measurementSystem, updatedAt: new Date() } }, { upsert: true, session });
-        await database.collection<StringDocument>("households").updateOne({ _id: householdId }, { $set: { "preferences.measurementSystem": measurementSystem, updatedAt: new Date() } }, { session });
-      });
+      await database.collection<StringDocument>("user_profiles").updateOne({ _id: userId }, { $set: { preferredMeasurementSystem: measurementSystem, updatedAt: new Date() } }, { upsert: true });
+      await database.collection<StringDocument>("households").updateOne({ _id: householdId }, { $set: { "preferences.measurementSystem": measurementSystem, updatedAt: new Date() } });
       return measurementSystem;
     },
     async getSlots(access) {
@@ -97,11 +94,9 @@ export function createMongoTenantStore(database: Db, recipes: MongoRecipeStore, 
       if (profile?.defaultHouseholdId && await memberships.findOne({ userId: user.id, householdId: profile.defaultHouseholdId })) return String(profile.defaultHouseholdId);
       const membership = await memberships.findOne({ userId: user.id }, { sort: { roleOrder: 1, createdAt: 1 } });
       const householdId = membership ? String(membership.householdId) : `household_${user.id}`;
-      await withTransaction(async (session) => {
-        await database.collection<StringDocument>("households").updateOne({ _id: householdId }, { $setOnInsert: { name: `${user.name || "My"} family`, timezone: "UTC", preferences: {}, createdAt: new Date() }, $set: { updatedAt: new Date() } }, { upsert: true, session });
-        await memberships.updateOne({ householdId, userId: user.id }, { $setOnInsert: { _id: crypto.randomUUID(), role: "owner", roleOrder: 0, createdAt: new Date() } }, { upsert: true, session });
-        await database.collection<StringDocument>("user_profiles").updateOne({ _id: user.id }, { $set: { userId: user.id, defaultHouseholdId: householdId, updatedAt: new Date() } }, { upsert: true, session });
-      });
+      await database.collection<StringDocument>("households").updateOne({ _id: householdId }, { $setOnInsert: { name: `${user.name || "My"} family`, timezone: "UTC", preferences: {}, createdAt: new Date() }, $set: { updatedAt: new Date() } }, { upsert: true });
+      await memberships.updateOne({ householdId, userId: user.id }, { $setOnInsert: { _id: crypto.randomUUID(), role: "owner", roleOrder: 0, createdAt: new Date() } }, { upsert: true });
+      await database.collection<StringDocument>("user_profiles").updateOne({ _id: user.id }, { $set: { userId: user.id, defaultHouseholdId: householdId, updatedAt: new Date() } }, { upsert: true });
       return householdId;
     },
     async getUserEmail(userId) { return String((await database.collection<StringDocument>("users").findOne({ _id: userId }, { projection: { email: 1 } }))?.email ?? "") || null; },

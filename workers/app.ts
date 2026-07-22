@@ -5,6 +5,7 @@ import { processHouseholdInvitationEmail, type HouseholdInvitationEmailQueueMess
 import { processShoppingEmail, type ShoppingEmailQueueMessage } from "../src/email/shopping-email";
 
 export { RecipeIngestionAgent, RecipeIngestionWorkflow } from "./recipe-ingestion";
+export { AuthSessionStoreDO } from "./auth-session-store";
 
 type EmailQueueMessage = ShoppingEmailQueueMessage | HouseholdInvitationEmailQueueMessage;
 

@@ -1,10 +1,10 @@
 # Production environment setup
 
-Production uses the Atlas database `application`, gateway Worker `tableplan-mongodb-gateway-production`, and application Worker `family-meal-planner`. Complete and approve the [preview setup](preview.md) before provisioning or deploying production.
+Production uses the Atlas database `application`, operations gateway Worker `tableplan-mongodb-operations-production`, and application Worker `family-meal-planner`. Complete and approve the [preview setup](preview.md) before provisioning or deploying production.
 
 ## 1. Provision isolated production infrastructure
 
-Create or select the transaction-capable production Atlas deployment. Enable Atlas Search and backups, confirm restore procedures, and keep it close to the `MONGO_LOCATION_HINT` in `wrangler.gateway.jsonc`.
+Create or select the production Atlas deployment. Enable Atlas Search and backups, confirm restore procedures, and keep it close to the `MONGO_LOCATION_HINT` in `wrangler.gateway.jsonc`.
 
 Create production-only least-privilege credentials for:
 
@@ -20,7 +20,7 @@ Do not reuse preview databases, credentials, gateway tokens, auth secrets, OAuth
 cp gateway/production.env.example .env.gateway.production
 ```
 
-Replace all placeholders. The ignored file must use `APP_ENV=production`, `MONGODB_DATABASE=application`, production-only credentials, the production Better Auth URL, and the production Better Auth secret.
+Replace all placeholders. The ignored file must use `APP_ENV=production`, `MONGODB_DATABASE=application`, production-only Atlas credentials, and the production service token. Authentication settings belong to the application Worker.
 
 Create collections, validators, and the Atlas Search definition:
 
@@ -63,7 +63,7 @@ Do not recreate existing resources. Verify the production email sender domain an
 
 ## 5. Store production secrets
 
-Gateway-only Atlas and Better Auth secrets:
+The gateway receives only Atlas credentials and its service token. Better Auth secrets belong to the application Worker:
 
 Generate a new production-only `BETTER_AUTH_SECRET`; it is an application secret, not a value obtained from Better Auth Dash. Store it in a password manager because Cloudflare will not reveal it after upload, and keep it stable across deployments. Changing it invalidates active sessions and in-flight OAuth state.
 
@@ -76,15 +76,16 @@ Paste that value when the `secret put` command prompts for `BETTER_AUTH_SECRET`.
 ```bash
 npx wrangler secret put MONGODB_URI --config wrangler.gateway.jsonc --env production
 npx wrangler secret put MONGODB_GATEWAY_SERVICE_TOKEN --config wrangler.gateway.jsonc --env production
-npx wrangler secret put BETTER_AUTH_SECRET --config wrangler.gateway.jsonc --env production
+npx wrangler secret put MONGODB_GATEWAY_SERVICE_TOKEN --env production
+npx wrangler secret put BETTER_AUTH_SECRET --env production
 ```
 
-Optional gateway-owned authentication integrations:
+Optional application-owned authentication integrations:
 
 ```bash
-npx wrangler secret put BETTER_AUTH_API_KEY --config wrangler.gateway.jsonc --env production
-npx wrangler secret put GOOGLE_CLIENT_ID --config wrangler.gateway.jsonc --env production
-npx wrangler secret put GOOGLE_CLIENT_SECRET --config wrangler.gateway.jsonc --env production
+npx wrangler secret put BETTER_AUTH_API_KEY --env production
+npx wrangler secret put GOOGLE_CLIENT_ID --env production
+npx wrangler secret put GOOGLE_CLIENT_SECRET --env production
 ```
 
 `BETTER_AUTH_API_KEY` is the separate value issued by Better Auth Dash for its infrastructure plugin. It is not used to sign Tableplan sessions or OAuth state.
@@ -92,7 +93,6 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET --config wrangler.gateway.jsonc --e
 Application-owned secrets:
 
 ```bash
-npx wrangler secret put MONGODB_GATEWAY_SERVICE_TOKEN --env production
 npx wrangler secret put OPENROUTER_API_KEY --env production
 ```
 
@@ -102,7 +102,7 @@ Never configure `MONGODB_GATEWAY_URL` in production and never give the applicati
 
 ## 6. Configure production authentication
 
-Create a separate Better Auth Dash project using the production public URL and `/api/auth` base path. Configure production-only OAuth redirect URLs and store issued secrets only on the gateway Worker.
+Create a separate Better Auth Dash project using the production public URL and `/api/auth` base path. Configure production-only OAuth redirect URLs and store issued secrets only on the application Worker.
 
 The checked-in placeholder production URL is `https://meal-planner.example.com`. Replace it in `wrangler.jsonc` and `wrangler.gateway.jsonc` before deployment if the real hostname differs.
 
@@ -122,7 +122,7 @@ Monitor gateway errors, Atlas connections, pool wait latency, slow queries, and 
 
 ## 8. Production release rules
 
-- Keep storage-contract changes backward-compatible while the gateway deploys before the application.
+- Keep Mongo gateway protocol changes backward-compatible while the gateway deploys before the application.
 - Apply schema and index changes before code that depends on them.
 - Treat catalog imports as separate audited operations.
 - Roll back Worker versions through Cloudflare; forward-fix database changes or restore from verified Atlas backups.

@@ -16,7 +16,6 @@ describe("gateway configuration", () => {
       GATEWAY_PORT: 8788,
       MONGODB_DATABASE: "application_local",
       LOG_LEVEL: "INFO",
-      BETTER_AUTH_API_TIMEOUT_MS: 10_000,
     });
   });
 
@@ -30,13 +29,13 @@ describe("gateway configuration", () => {
   });
 
   it("selects and enforces the preview database", () => {
-    const preview = { ...base, APP_ENV: "preview", BETTER_AUTH_SECRET: "preview-auth-secret-at-least-32-characters" };
+    const preview = { ...base, APP_ENV: "preview" };
     expect(loadGatewayConfig(preview).MONGODB_DATABASE).toBe("application_preview");
     expect(() => loadGatewayConfig({ ...preview, MONGODB_DATABASE: "application" })).toThrow("preview must use MongoDB database application_preview");
   });
 
   it("selects and enforces the production database", () => {
-    const production = { ...base, APP_ENV: "production", BETTER_AUTH_SECRET: "production-auth-secret-at-least-32-characters" };
+    const production = { ...base, APP_ENV: "production" };
     expect(loadGatewayConfig(production).MONGODB_DATABASE).toBe("application");
     expect(() => loadGatewayConfig({ ...production, MONGODB_DATABASE: "application_preview" })).toThrow("production must use MongoDB database application");
   });

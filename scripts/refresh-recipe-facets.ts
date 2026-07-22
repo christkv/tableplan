@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { loadGatewayConfig } from "../gateway/config";
 import { createMongoRuntime } from "../gateway/mongo";
-import { refreshCatalogRecipeFacets } from "../gateway/recipes";
+import { refreshCatalogRecipeFacets } from "../src/storage/mongodb/recipes";
 
 const config = loadGatewayConfig(process.env);
 const mongo = createMongoRuntime(config);

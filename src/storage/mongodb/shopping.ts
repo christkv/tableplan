@@ -1,12 +1,12 @@
 import type { Db, Document } from "mongodb";
 
-import { aggregateIngredients } from "../src/domain/quantity/aggregate";
-import { displayQuantity } from "../src/domain/quantity/display";
-import type { MeasurementSystem } from "../src/domain/quantity/types";
-import { findUnit } from "../src/domain/quantity/units";
-import type { RecipeAccessContext } from "../src/domain/recipes";
-import type { ShoppingListView } from "../src/domain/shopping";
-import type { PublicShoppingList } from "../src/domain/shopping-share";
+import { aggregateIngredients } from "../../domain/quantity/aggregate";
+import { displayQuantity } from "../../domain/quantity/display";
+import type { MeasurementSystem } from "../../domain/quantity/types";
+import { findUnit } from "../../domain/quantity/units";
+import type { RecipeAccessContext } from "../../domain/recipes";
+import type { ShoppingListView } from "../../domain/shopping";
+import type { PublicShoppingList } from "../../domain/shopping-share";
 import type { MongoPlanStore } from "./plans";
 import type { MongoRecipeStore } from "./recipes";
 

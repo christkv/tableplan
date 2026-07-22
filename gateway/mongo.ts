@@ -1,4 +1,4 @@
-import { BSON, MongoClient, type ClientSession, type CommandStartedEvent, type Db } from "mongodb";
+import { BSON, MongoClient, type CommandStartedEvent, type Db } from "mongodb";
 
 import { createLogger, FORMAT_LOG_CONTEXT, type LogContext, type Logger } from "../src/observability/logger";
 
@@ -21,7 +21,6 @@ export interface MongoRuntime {
   connect(): Promise<void>;
   ping(): Promise<void>;
   close(): Promise<void>;
-  withTransaction<T>(operation: (session: ClientSession) => Promise<T>): Promise<T>;
 }
 
 const HIDDEN_COMMANDS = new Set(["authenticate", "hello", "ismaster", "saslContinue", "saslStart"]);
@@ -111,10 +110,5 @@ export function createMongoRuntime(config: MongoConnectionConfig, suppliedLogger
     async connect() { await client.connect(); },
     async ping() { await database.command({ ping: 1 }); },
     async close() { await client.close(); },
-    async withTransaction(operation) {
-      const session = client.startSession();
-      try { return await session.withTransaction(() => operation(session)); }
-      finally { await session.endSession(); }
-    },
   };
 }

@@ -6,6 +6,8 @@
     "gateway/**/*",
     "scripts/**/*",
     "src/storage/contract.ts",
+    "src/storage/mongo-protocol.ts",
+    "src/storage/mongodb/**/*",
     "src/domain/**/*",
     "src/domain/quantity/**/*",
     "src/import/**/*",

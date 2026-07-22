@@ -1,132 +1,74 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { STORAGE_CONTRACT_VERSION } from "../src/storage/contract";
 import { createGatewayHandler } from "./app";
+import { MONGO_GATEWAY_PROTOCOL_VERSION } from "../src/storage/mongo-protocol";
 
 const token = "a-secure-test-service-token-at-least-32-chars";
-const recipes = {
-  search: vi.fn(),
-  facets: vi.fn(),
-  get: vi.fn(),
-};
-const tenant = {
-  isFavorite: vi.fn(), setFavorite: vi.fn(), listFavorites: vi.fn(), getMeasurementSystem: vi.fn(), updateMeasurementSystem: vi.fn(),
-  getSlots: vi.fn(), updateSlots: vi.fn(), listSavedSearches: vi.fn(), createSavedSearch: vi.fn(), deleteSavedSearch: vi.fn(),
-  ensureUserHousehold: vi.fn(), getUserEmail: vi.fn(),
-};
-const plans = { get: vi.fn(), getById: vi.fn(), getItemContext: vi.fn(), ensure: vi.fn(), addItem: vi.fn(), removeItem: vi.fn(), updateServings: vi.fn(), copyWeek: vi.fn() };
-const shopping = { generate: vi.fn(), refreshPlan: vi.fn(), refreshRecipe: vi.fn(), getLatest: vi.fn(), getById: vi.fn(), getForPlan: vi.fn(), toggle: vi.fn(), getPublic: vi.fn(), togglePublic: vi.fn() };
-const shares = { create: vi.fn(), resolve: vi.fn(), revoke: vi.fn(), list: vi.fn(), getPublicList: vi.fn(), togglePublic: vi.fn(), touch: vi.fn() };
-const apiKeys = { create: vi.fn(), list: vi.fn(), revoke: vi.fn(), authenticate: vi.fn() };
-const ingestions = { create: vi.fn(), attachArtifact: vi.fn(), updateStatus: vi.fn(), saveDraft: vi.fn(), get: vi.fn(), getArtifact: vi.fn(), candidates: vi.fn(), publish: vi.fn(), setVisibility: vi.fn(), updateOwned: vi.fn() };
-const households = { overview: vi.fn(), switchDefault: vi.fn(), createInvitation: vi.fn(), revokeInvitation: vi.fn(), resolveInvitation: vi.fn(), acceptInvitation: vi.fn(), claimInvitationEmail: vi.fn(), updateInvitationDelivery: vi.fn() };
-const email = { create: vi.fn(), claim: vi.fn(), update: vi.fn(), get: vi.fn() };
 
-function rpcRequest(overrides: RequestInit = {}) {
-  return new Request("https://gateway.example.com/v1/rpc", {
+function request(operation: string, args: Record<string, unknown> = {}, overrides: RequestInit = {}) {
+  return new Request("https://gateway.example.test/v1/mongodb", {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({ contractVersion: STORAGE_CONTRACT_VERSION, requestId: "request-1", operation: "system.health", input: {} }),
+    body: JSON.stringify({ version: MONGO_GATEWAY_PROTOCOL_VERSION, requestId: "request-1", operation, ...(operation === "ping" ? {} : { collection: "recipes" }), args }),
     ...overrides,
   });
 }
 
-describe("gateway handler", () => {
-  it("serves authenticated health RPC without exposing MongoDB details", async () => {
-    const ping = vi.fn(async () => undefined);
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 1024, ping, recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email, now: () => 10 });
-    const response = await handler(rpcRequest());
+function database() {
+  const collection = {
+    findOne: vi.fn(async () => ({ _id: "recipe-1", createdAt: new Date("2026-07-23T00:00:00.000Z") })),
+    find: vi.fn(() => ({ toArray: vi.fn(async () => []) })),
+    aggregate: vi.fn(() => ({ toArray: vi.fn(async () => []) })),
+    countDocuments: vi.fn(async () => 0),
+    distinct: vi.fn(async () => []),
+    insertOne: vi.fn(async () => ({ insertedId: "recipe-1" })),
+    insertMany: vi.fn(async () => ({ insertedIds: { 0: "recipe-1" }, insertedCount: 1 })),
+    updateOne: vi.fn(async () => ({ matchedCount: 1, modifiedCount: 1, upsertedCount: 0, upsertedId: null })),
+    updateMany: vi.fn(async () => ({ matchedCount: 1, modifiedCount: 1, upsertedCount: 0, upsertedId: null })),
+    replaceOne: vi.fn(), findOneAndUpdate: vi.fn(), findOneAndDelete: vi.fn(), findOneAndReplace: vi.fn(),
+    deleteOne: vi.fn(async () => ({ deletedCount: 1 })), deleteMany: vi.fn(async () => ({ deletedCount: 1 })), bulkWrite: vi.fn(),
+  };
+  return { collection, db: { collection: vi.fn(() => collection), command: vi.fn(async () => ({ ok: 1 })) } };
+}
 
+describe("operations-only MongoDB gateway", () => {
+  it("executes a find and preserves BSON dates in the response", async () => {
+    const fixture = database();
+    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 4096, database: fixture.db as never, ping: vi.fn() });
+    const response = await handler(request("findOne", { filter: { _id: "recipe-1" } }));
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      contractVersion: STORAGE_CONTRACT_VERSION,
-      requestId: "request-1",
-      ok: true,
-      result: { status: "ok", backend: "mongodb-gateway" },
-    });
-    expect(ping).toHaveBeenCalledOnce();
+    await expect(response.json()).resolves.toMatchObject({ ok: true, result: { _id: "recipe-1", createdAt: { $date: "2026-07-23T00:00:00.000Z" } } });
+    expect(fixture.collection.findOne).toHaveBeenCalledWith({ _id: "recipe-1" }, {});
+  });
+
+  it("supports batch insert using insertMany", async () => {
+    const fixture = database();
+    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 4096, database: fixture.db as never, ping: vi.fn() });
+    const response = await handler(request("insertMany", { documents: [{ _id: "recipe-1" }] }));
+    expect(response.status).toBe(200);
+    expect(fixture.collection.insertMany).toHaveBeenCalledOnce();
   });
 
   it("rejects missing credentials", async () => {
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 1024, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email });
-    const response = await handler(rpcRequest({ headers: { "content-type": "application/json" } }));
+    const fixture = database();
+    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 4096, database: fixture.db as never, ping: vi.fn() });
+    const response = await handler(request("find", {}, { headers: { "content-type": "application/json" } }));
     expect(response.status).toBe(401);
   });
 
-  it("reports dependency failure with a stable non-secret error", async () => {
-    const handler = createGatewayHandler({
-      serviceToken: token,
-      maxBodyBytes: 1024,
-      ping: async () => { throw new Error("mongodb://username:password@secret-host"); },
-      recipes,
-      tenant,
-      plans,
-      shopping,
-      shares,
-      apiKeys,
-      ingestions,
-      households,
-      email,
-    });
-    const response = await handler(rpcRequest());
-    const body = await response.text();
-    expect(body).toContain("storage_operation_failed");
-    expect(body).not.toContain("secret-host");
+  it("rejects domain RPC and auth routes", async () => {
+    const fixture = database();
+    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 4096, database: fixture.db as never, ping: vi.fn() });
+    expect((await handler(new Request("https://gateway.example.test/v1/rpc", { method: "POST" }))).status).toBe(404);
+    expect((await handler(new Request("https://gateway.example.test/api/auth/get-session"))).status).toBe(404);
   });
 
-  it("dispatches API-key authentication without exposing the key in its response envelope", async () => {
-    apiKeys.authenticate.mockResolvedValueOnce({ id: "key-1", userId: "user-1", householdId: "house-1", scopes: ["recipes:read"] });
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 2048, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email });
-    const response = await handler(rpcRequest({ body: JSON.stringify({ contractVersion: STORAGE_CONTRACT_VERSION, requestId: "request-key", operation: "apiKeys.authenticate", input: { key: "mp_test_secret" } }) }));
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ requestId: "request-key", ok: true, result: { id: "key-1" } });
-    expect(apiKeys.authenticate).toHaveBeenCalledWith("mp_test_secret");
-  });
-
-  it("rejects an expired caller deadline before touching storage", async () => {
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 2048, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email });
-    const response = await handler(rpcRequest({ body: JSON.stringify({ contractVersion: STORAGE_CONTRACT_VERSION, requestId: "request-expired", deadlineAt: 1, operation: "system.health", input: {} }) }));
+  it("rejects expired deadlines before touching MongoDB", async () => {
+    const fixture = database();
+    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 4096, database: fixture.db as never, ping: vi.fn() });
+    const body = JSON.stringify({ version: 1, requestId: "expired", deadlineAt: 1, operation: "find", collection: "recipes", args: {} });
+    const response = await handler(request("find", {}, { body }));
     expect(response.status).toBe(408);
-    expect(await response.json()).toEqual({ error: "deadline_exceeded" });
-  });
-
-  it("passes Better Auth routes to the gateway auth handler before RPC authentication", async () => {
-    const authHandler = vi.fn(async () => Response.json({ ok: true }));
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 2048, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email, authHandler });
-    const response = await handler(new Request("https://gateway.example.com/api/auth/dash/validate", { headers: { "x-tableplan-service-token": `Bearer ${token}` } }));
-    expect(response.status).toBe(200);
-    expect(authHandler).toHaveBeenCalledOnce();
-  });
-
-  it("does not expose Better Auth directly without the application service credential", async () => {
-    const authHandler = vi.fn(async () => Response.json({ ok: true }));
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 2048, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email, authHandler });
-    const response = await handler(new Request("https://gateway.example.com/api/auth/get-session"));
-    expect(response.status).toBe(401);
-    expect(authHandler).not.toHaveBeenCalled();
-  });
-
-  it("enforces the auth body ceiling for streamed requests without content-length", async () => {
-    const authHandler = vi.fn(async () => Response.json({ ok: true }));
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 32, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email, authHandler });
-    const body = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new Uint8Array(33)); controller.close(); } });
-    const request = new Request("https://gateway.example.com/api/auth/sign-up/email", { method: "POST", headers: { "x-tableplan-service-token": `Bearer ${token}` }, body, duplex: "half" } as RequestInit);
-    const response = await handler(request);
-    expect(response.status).toBe(413);
-    expect(authHandler).not.toHaveBeenCalled();
-  });
-
-  it("rejects work above the configured in-flight ceiling", async () => {
-    let release!: (value: { recipes: never[]; hasMore: boolean; total: { value: number; relation: "exact" }; limit: number; offset: number }) => void;
-    recipes.search.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
-    const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 2048, maxInFlight: 1, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email, log: vi.fn() });
-    const body = JSON.stringify({ contractVersion: STORAGE_CONTRACT_VERSION, requestId: "search-held", operation: "recipes.search", input: { search: {}, access: { userId: "user-1", householdId: "house-1" } } });
-    const held = handler(rpcRequest({ body }));
-    await vi.waitFor(() => expect(recipes.search).toHaveBeenCalled());
-    const overloaded = await handler(rpcRequest({ body: body.replace("search-held", "search-overload") }));
-    expect(overloaded.status).toBe(503);
-    await expect(overloaded.json()).resolves.toEqual({ error: "gateway_overloaded" });
-    release({ recipes: [], hasMore: false, total: { value: 0, relation: "exact" }, limit: 24, offset: 0 });
-    expect((await held).status).toBe(200);
+    expect(fixture.db.collection).not.toHaveBeenCalled();
   });
 });

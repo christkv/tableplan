@@ -22,7 +22,6 @@ function locationHint(value: string | undefined): LocationHint {
 function configurationError(env: MongoGatewayEnvironment): string | null {
   if (!env.MONGODB_URI || typeof env.MONGODB_URI !== "string") return "MONGODB_URI is not configured";
   if (!env.MONGODB_GATEWAY_SERVICE_TOKEN || typeof env.MONGODB_GATEWAY_SERVICE_TOKEN !== "string") return "MONGODB_GATEWAY_SERVICE_TOKEN is not configured";
-  if (!env.BETTER_AUTH_SECRET || typeof env.BETTER_AUTH_SECRET !== "string") return "BETTER_AUTH_SECRET is not configured";
   return null;
 }
 
@@ -35,7 +34,7 @@ export class MongoGatewayDO extends DurableObject<MongoGatewayEnvironment> {
 
   constructor(state: DurableObjectState, env: MongoGatewayEnvironment) {
     super(state, env);
-    const runtime = createGatewayRuntime(loadGatewayConfig(env), { waitUntil: (promise) => state.waitUntil(promise) });
+    const runtime = createGatewayRuntime(loadGatewayConfig(env));
     this.handler = runtime.handler;
     this.logger = runtime.logger;
     this.mongo = runtime.mongo;

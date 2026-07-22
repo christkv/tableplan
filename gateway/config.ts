@@ -22,12 +22,6 @@ const gatewayConfigSchema = z.object({
   GATEWAY_MAX_IN_FLIGHT: integer(100),
   APP_ENV: z.string().default("local"),
   LOG_LEVEL: logLevel,
-  BETTER_AUTH_URL: z.string().url().default("http://127.0.0.1:5173"),
-  BETTER_AUTH_SECRET: z.string().min(32).default("local-only-secret-change-before-deployment-32-chars"),
-  BETTER_AUTH_API_KEY: z.string().optional(),
-  BETTER_AUTH_API_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 export type GatewayConfig = z.infer<typeof gatewayConfigSchema>;
@@ -51,6 +45,5 @@ export function loadGatewayConfig(environment: Record<string, unknown>): Gateway
   if (expectedDatabase && config.MONGODB_DATABASE !== expectedDatabase) {
     throw new Error(`${config.APP_ENV} must use MongoDB database ${expectedDatabase}`);
   }
-  if (config.APP_ENV !== "local" && config.BETTER_AUTH_SECRET.startsWith("local-only-secret")) throw new Error("BETTER_AUTH_SECRET is required outside local development");
   return config;
 }

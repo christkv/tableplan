@@ -1,9 +1,8 @@
-import type { ClientSession, Db, Document } from "mongodb";
+import type { Db, Document } from "mongodb";
 
-import { HouseholdInvitationError, INVITATION_LIFETIME_DAYS, hashInvitationToken, randomInvitationToken, type HouseholdInvitationEmailRecord, type HouseholdInvitationView, type HouseholdInviteRole, type HouseholdOverview, type HouseholdRelationship } from "../src/domain/households";
+import { HouseholdInvitationError, INVITATION_LIFETIME_DAYS, hashInvitationToken, randomInvitationToken, type HouseholdInvitationEmailRecord, type HouseholdInvitationView, type HouseholdInviteRole, type HouseholdOverview, type HouseholdRelationship } from "../../domain/households";
 
 type StringDocument = Document & { _id: string };
-type TransactionRunner = <T>(operation: (session: ClientSession) => Promise<T>) => Promise<T>;
 const iso = (value: unknown) => new Date(value as string | Date).toISOString();
 
 export interface MongoHouseholdStore {
@@ -17,7 +16,7 @@ export interface MongoHouseholdStore {
   updateInvitationDelivery(invitationId: string, status: "queued" | "sending" | "sent" | "failed", details?: { providerMessageId?: string; error?: string }): Promise<void>;
 }
 
-export function createMongoHouseholdStore(database: Db, withTransaction: TransactionRunner): MongoHouseholdStore {
+export function createMongoHouseholdStore(database: Db): MongoHouseholdStore {
   const households = database.collection<StringDocument>("households"); const memberships = database.collection<StringDocument>("household_memberships");
   const invitations = database.collection<StringDocument>("household_invitations"); const users = database.collection<StringDocument>("users"); const profiles = database.collection<StringDocument>("user_profiles");
   const requireOwner = async (householdId: string, userId: string) => { if ((await memberships.findOne({ householdId, userId }))?.role !== "owner") throw new HouseholdInvitationError("owner_required", "Only the household owner can manage invitations."); };
@@ -39,7 +38,7 @@ export function createMongoHouseholdStore(database: Db, withTransaction: Transac
     },
     async revokeInvitation(householdId, userId, invitationId) { await requireOwner(householdId, userId); const result = await invitations.updateOne({ _id: invitationId, householdId, status: "pending" }, { $set: { status: "revoked", revokedAt: new Date(), updatedAt: new Date() } }); if (!result.matchedCount) throw new HouseholdInvitationError("invitation_not_found", "Invitation is no longer pending."); },
     async resolveInvitation(token) { if (!token || token.length > 256) return null; const invitation = await invitations.findOne({ tokenHash: await hashInvitationToken(token), status: "pending", expiresAt: { $gt: new Date() } }); if (!invitation) return null; const [household, inviter, existing] = await Promise.all([households.findOne({ _id: String(invitation.householdId) }), users.findOne({ _id: String(invitation.invitedByUserId) }), users.findOne({ email: invitation.email })]); if (!household || !inviter) return null; return { id: invitation._id, householdId: String(invitation.householdId), householdName: String(household.name), email: String(invitation.email), relationship: invitation.relationship as HouseholdRelationship, role: invitation.role as HouseholdInviteRole, inviterName: String(inviter.name), expiresAt: iso(invitation.expiresAt), createdAt: iso(invitation.createdAt), deliveryStatus: String(invitation.deliveryStatus), existingAccount: Boolean(existing) }; },
-    async acceptInvitation(invitation, user) { if (user.email.trim().toLowerCase() !== invitation.email) throw new HouseholdInvitationError("email_mismatch", `Sign in as ${invitation.email} to join this household.`); await withTransaction(async (session) => { const now = new Date(); const accepted = await invitations.updateOne({ _id: invitation.id, status: "pending", expiresAt: { $gt: now } }, { $set: { status: "accepted", acceptedByUserId: user.id, acceptedAt: now, updatedAt: now } }, { session }); if (!accepted.matchedCount) throw new HouseholdInvitationError("invitation_unavailable", "This invitation has expired or was already used."); await memberships.updateOne({ householdId: invitation.householdId, userId: user.id }, { $setOnInsert: { _id: crypto.randomUUID(), role: invitation.role, roleOrder: 1, relationship: invitation.relationship, createdAt: now } }, { upsert: true, session }); await profiles.updateOne({ _id: user.id }, { $set: { defaultHouseholdId: invitation.householdId, updatedAt: now } }, { upsert: true, session }); await users.updateOne({ _id: user.id }, { $set: { emailVerified: true, updatedAt: now } }, { session }); }); },
+    async acceptInvitation(invitation, user) { if (user.email.trim().toLowerCase() !== invitation.email) throw new HouseholdInvitationError("email_mismatch", `Sign in as ${invitation.email} to join this household.`); const now = new Date(); const accepted = await invitations.updateOne({ _id: invitation.id, status: "pending", expiresAt: { $gt: now } }, { $set: { status: "accepted", acceptedByUserId: user.id, acceptedAt: now, updatedAt: now } }); if (!accepted.matchedCount) throw new HouseholdInvitationError("invitation_unavailable", "This invitation has expired or was already used."); await memberships.updateOne({ householdId: invitation.householdId, userId: user.id }, { $setOnInsert: { _id: crypto.randomUUID(), role: invitation.role, roleOrder: 1, relationship: invitation.relationship, createdAt: now } }, { upsert: true }); await profiles.updateOne({ _id: user.id }, { $set: { defaultHouseholdId: invitation.householdId, updatedAt: now } }, { upsert: true }); await users.updateOne({ _id: user.id }, { $set: { emailVerified: true, updatedAt: now } }); },
     async claimInvitationEmail(invitationId) {
       const i = await invitations.findOneAndUpdate(
         { _id: invitationId, status: "pending", deliveryStatus: { $in: ["pending", "queued", "failed"] } },
