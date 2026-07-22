@@ -159,7 +159,8 @@ export class MongoGatewayStorageClient implements StorageClient {
   }
 
   listRecipeTagFacets(input: Pick<RecipeSearchInput, "query" | "ingredient" | "scope">, access: RecipeAccessContext) {
-    return this.rpc<Awaited<ReturnType<StorageClient["listRecipeTagFacets"]>>>("recipes.facets", { search: input, access }, gatewayRecipeFacetsResponseSchema, "recipe_facets_failed");
+    const search = { query: input.query, ingredient: input.ingredient, scope: input.scope };
+    return this.rpc<Awaited<ReturnType<StorageClient["listRecipeTagFacets"]>>>("recipes.facets", { search, access }, gatewayRecipeFacetsResponseSchema, "recipe_facets_failed");
   }
 
   getRecipe(recipeId: string, access: RecipeAccessContext) {

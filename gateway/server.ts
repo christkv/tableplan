@@ -13,6 +13,7 @@ import { createMongoIngestionStore } from "./ingestions";
 import { createGatewayAuth } from "./auth";
 import { createMongoHouseholdStore } from "./households";
 import { createMongoEmailStore } from "./email";
+import { createLogger, errorLogContext } from "../src/observability/logger";
 
 function toRequest(request: IncomingMessage): Request {
   const origin = `http://${request.headers.host ?? "127.0.0.1"}`;
@@ -34,8 +35,10 @@ async function writeResponse(response: Response, target: ServerResponse) {
 }
 
 const config = loadGatewayConfig(process.env);
+const logger = createLogger(config, "mongodb-gateway");
 const mongo = createMongoRuntime(config);
 await mongo.connect();
+logger.info("connected", { database: config.MONGODB_DATABASE });
 
 const recipes = createMongoRecipeStore(mongo.database);
 const plans = createMongoPlanStore(mongo.database, recipes, (operation) => mongo.withTransaction(operation));
@@ -57,21 +60,30 @@ const handler = createGatewayHandler({
   authHandler: (request) => auth.handler(request),
   households: createMongoHouseholdStore(mongo.database, (operation) => mongo.withTransaction(operation)),
   email: createMongoEmailStore(mongo.database),
+  log: (event) => {
+    const { event: eventName, ...context } = event;
+    logger.info(typeof eventName === "string" ? eventName : "event", context);
+  },
 });
 const server = createServer(async (request, response) => {
   try {
     await writeResponse(await handler(toRequest(request)), response);
-  } catch {
+  } catch (error) {
+    logger.error("request.failed", errorLogContext(error));
     response.statusCode = 500;
     response.end();
   }
 });
 
-server.listen(config.GATEWAY_PORT, config.GATEWAY_HOST);
+server.listen(config.GATEWAY_PORT, config.GATEWAY_HOST, () => {
+  logger.info("listening", { host: config.GATEWAY_HOST, port: config.GATEWAY_PORT, logLevel: config.LOG_LEVEL });
+});
 
 async function shutdown() {
+  logger.info("shutdown.started");
   server.close();
   await mongo.close();
+  logger.info("shutdown.completed");
   process.exit(0);
 }
 

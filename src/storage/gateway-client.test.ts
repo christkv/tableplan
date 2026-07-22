@@ -52,6 +52,49 @@ describe("MongoGatewayStorageClient", () => {
     await expect(client.health()).resolves.toMatchObject({ status: "ok" });
   });
 
+  it("sends only the facet filters accepted by the gateway contract", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { requestId: string; input: { search: unknown } };
+      expect(request.input.search).toEqual({ query: "pasta", ingredient: "tomato", scope: "catalog" });
+      return Response.json({
+        contractVersion: STORAGE_CONTRACT_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        result: [],
+      });
+    }) as unknown as typeof fetch;
+    const client = new MongoGatewayStorageClient({
+      baseUrl: "https://mongo-gateway.example.com",
+      serviceToken: "test-service-token",
+      fetcher,
+    });
+    const filters = { query: "pasta", ingredient: "tomato", scope: "catalog" as const, tags: ["Dinner"], tagMatch: "all" as const };
+
+    await expect(client.listRecipeTagFacets(filters, { userId: "user-1", householdId: "household-1" })).resolves.toEqual([]);
+  });
+
+  it("accepts paged recipe results with a lower-bound total", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { requestId: string };
+      return Response.json({
+        contractVersion: STORAGE_CONTRACT_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        result: { recipes: [], hasMore: true, total: { value: 25, relation: "lowerBound" }, limit: 24, offset: 0 },
+      });
+    }) as unknown as typeof fetch;
+    const client = new MongoGatewayStorageClient({
+      baseUrl: "https://mongo-gateway.example.com",
+      serviceToken: "test-service-token",
+      fetcher,
+    });
+
+    await expect(client.searchRecipes({}, { userId: "user-1", householdId: "household-1" })).resolves.toMatchObject({
+      hasMore: true,
+      total: { value: 25, relation: "lowerBound" },
+    });
+  });
+
   it("rejects an invalid or mismatched gateway response", async () => {
     const fetcher = vi.fn(async () => Response.json({
       contractVersion: STORAGE_CONTRACT_VERSION,

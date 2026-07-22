@@ -21,6 +21,22 @@ npm run dev
 
 Local data is isolated in `application_local`. The gateway listens at `http://127.0.0.1:8790`; application requests never connect to MongoDB directly. Run the full quality gate with `npm run check`.
 
+Keep local MongoDB indexes synchronized with the code definitions using `npm run gateway:indexes:sync:local -- --dry-run`, followed by `npm run gateway:indexes:sync:local`. Preview and production targets are documented in the Cloudflare deployment runbook.
+
+Logging defaults to `INFO`. Set `LOG_LEVEL=DEBUG`, `INFO`, or `ERROR` independently in `.dev.vars` (application Worker) and `.env.gateway.local` (MongoDB gateway). Gateway `INFO` logs include sanitized MongoDB command metadata and durations.
+
+`npm run import:sample` intentionally stops after 5,000 recipes. To import the entire raw catalog into the local database, omit the limit:
+
+```bash
+node --env-file=.env.gateway.local --import tsx \
+  scripts/import-recipes-mongodb.ts \
+  data/recipes_ingredients.csv \
+  --database application_local \
+  --batch-size 500
+```
+
+The full command resumes an earlier sample or interrupted import from its stored checkpoint when the source file is unchanged.
+
 ## Documentation
 
 - [Initial setup](INITIAL_SETUP.md)

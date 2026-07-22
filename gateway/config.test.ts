@@ -15,7 +15,13 @@ describe("gateway configuration", () => {
       MONGODB_MAX_CONNECTING: 2,
       GATEWAY_PORT: 8788,
       MONGODB_DATABASE: "application_local",
+      LOG_LEVEL: "INFO",
     });
+  });
+
+  it("normalizes and validates the log level", () => {
+    expect(loadGatewayConfig({ ...base, LOG_LEVEL: " debug " }).LOG_LEVEL).toBe("DEBUG");
+    expect(() => loadGatewayConfig({ ...base, LOG_LEVEL: "trace" })).toThrow();
   });
 
   it("rejects a minimum pool larger than the maximum", () => {

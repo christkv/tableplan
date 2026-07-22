@@ -9,7 +9,7 @@ import type { ApiKeyAuthentication, ApiKeyView, ApiScope } from "../domain/api-k
 import type { PublishRecipeInput, RecipeDraft, RecipeIngestionStatus, RecipeIngestionView, RecipeInputKind } from "../ingestion/types";
 import type { HouseholdInvitationEmailRecord, HouseholdInvitationView, HouseholdInviteRole, HouseholdOverview, HouseholdRelationship } from "../domain/households";
 
-export const STORAGE_CONTRACT_VERSION = "2026-07-21.1" as const;
+export const STORAGE_CONTRACT_VERSION = "2026-07-22.1" as const;
 
 export const storageBackendSchema = z.literal("mongodb-gateway");
 export type StorageBackend = z.infer<typeof storageBackendSchema>;
@@ -115,7 +115,13 @@ const recipeDetailSchema = recipeSummarySchema.extend({
     unitId: z.string().nullable(), preparation: z.string().nullable(), parseStatus: z.enum(["parsed", "partial", "unresolved"]),
   })),
 });
-const recipeSearchResultSchema = z.object({ recipes: z.array(recipeSummarySchema), total: z.number().int().nonnegative(), limit: z.number().int(), offset: z.number().int() });
+const recipeSearchResultSchema = z.object({
+  recipes: z.array(recipeSummarySchema),
+  hasMore: z.boolean(),
+  total: z.object({ value: z.number().int().nonnegative(), relation: z.enum(["exact", "lowerBound"]) }).nullable(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+});
 const recipeTagOptionsSchema = z.array(z.object({ name: z.string(), recipeCount: z.number().int().nonnegative() }));
 const recipeDraftSchema = z.object({
   title: z.string().max(240), description: z.string().max(4_000), servings: z.number().positive().max(1_000).nullable(), servingSize: z.string().max(120).nullable(),

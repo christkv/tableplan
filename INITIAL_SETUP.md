@@ -66,7 +66,7 @@ npm run import -- data/recipes_ingredients.csv \
   --batch-size 500
 ```
 
-The importer caps its pool at four connections, stores a SHA-256-based run ID in `import_runs`, resumes from `checkpointRow`, upserts stable recipe IDs, and records malformed/duplicate rows in `import_issues`. Re-running the same command resumes or safely reapplies the same source. See [recipe import operations](docs/operations/recipe-import.md) for verification queries.
+This is the complete preview import: do not add `--limit`. The importer caps its pool at four connections, stores a SHA-256-based run ID in `import_runs`, resumes from `checkpointRow`, upserts stable recipe IDs, and records malformed/duplicate rows in `import_issues`. Re-running the same command resumes or safely reapplies the same source. The latest run must report `status: "completed"`; see [recipe import operations](docs/operations/recipe-import.md) for verification queries and the equivalent full local import.
 
 ## 5. Deploy the preview MongoDB gateway
 

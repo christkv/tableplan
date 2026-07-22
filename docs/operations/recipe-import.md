@@ -11,22 +11,53 @@ This runbook loads the administrator-owned raw CSV catalog into MongoDB. User pa
 - upserts stable recipe, ingredient, tag, and unit documents;
 - rejects duplicate source IDs and oversized MongoDB documents into `import_issues`;
 - checkpoints after each bulk batch and resumes the same source;
+- refreshes materialized catalog tag counts before marking the run complete or paused;
 - limits its MongoDB pool to four connections;
 - refuses the `application` production database without `--allow-production`.
 
 The importer connects with a dedicated maintenance credential. Normal application traffic still goes through the gateway.
 
-## Local bounded import
+## Local sample import
 
 ```bash
-MONGODB_URI='mongodb://127.0.0.1:27017/?directConnection=true' \
-npm run import -- data/recipes_ingredients.csv \
+node --env-file=.env.gateway.local --import tsx \
+  scripts/import-recipes-mongodb.ts \
+  data/recipes_ingredients.csv \
   --database application_local \
   --limit 5000 \
   --batch-size 500
 ```
 
-A limited run ends with status `paused`. Run the same command without `--limit` to resume from its checkpoint.
+A limited run ends with status `paused`.
+
+## Full local import
+
+Run schema setup first, then run the importer without `--limit`:
+
+```bash
+npm run gateway:migrate:local
+node --env-file=.env.gateway.local --import tsx \
+  scripts/import-recipes-mongodb.ts \
+  data/recipes_ingredients.csv \
+  --database application_local \
+  --batch-size 500
+```
+
+This imports every valid recipe from the CSV. If the sample import was already run, the full command resumes from that run's checkpoint. If the process is interrupted, repeat the exact command.
+
+Verify the local result:
+
+```bash
+mongosh 'mongodb://127.0.0.1:27017/application_local?directConnection=true'
+```
+
+```javascript
+db.recipes.countDocuments({ origin: "dataset", status: "active" })
+db.import_runs.find().sort({ startedAt: -1 }).limit(1).pretty()
+db.import_issues.countDocuments({ severity: "error" })
+```
+
+The latest run must have `status: "completed"`. Review error-level issues rather than assuming every raw row was accepted.
 
 ## Full preview import
 

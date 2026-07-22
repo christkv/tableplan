@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const integer = (fallback: number) => z.coerce.number().int().positive().default(fallback);
+const logLevel = z.preprocess(
+  (value) => typeof value === "string" ? value.trim().toUpperCase() : value,
+  z.enum(["DEBUG", "INFO", "ERROR"]).default("INFO"),
+);
 
 const gatewayConfigSchema = z.object({
   MONGODB_URI: z.string().min(1),
@@ -17,6 +21,7 @@ const gatewayConfigSchema = z.object({
   GATEWAY_MAX_BODY_BYTES: integer(1_048_576),
   GATEWAY_MAX_IN_FLIGHT: integer(100),
   APP_ENV: z.string().default("local"),
+  LOG_LEVEL: logLevel,
   BETTER_AUTH_URL: z.string().url().default("http://127.0.0.1:5173"),
   BETTER_AUTH_SECRET: z.string().min(32).default("local-only-secret-change-before-deployment-32-chars"),
   BETTER_AUTH_API_KEY: z.string().optional(),

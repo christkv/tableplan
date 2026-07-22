@@ -52,7 +52,7 @@ export async function loader({ request, context }: Route.LoaderArgs): Promise<Lo
   const url = new URL(request.url);
   const filters = readFilters(url);
   const planSelection = readMealPlanSelection(url.searchParams);
-  const empty: RecipeSearchResult = { recipes: [], total: 0, limit: 24, offset: 0 };
+  const empty: RecipeSearchResult = { recipes: [], hasMore: false, total: { value: 0, relation: "exact" }, limit: 24, offset: 0 };
   const { env, ctx } = context.get(cloudflareContext);
   const session = await requireRequestSession(request, env, ctx);
   const storage = createStorageClient(env);
@@ -131,7 +131,7 @@ function InfiniteRecipeGrid({ initialResult, query, ingredient, selectedTags, ta
   planSelection: MealPlanSelection | null;
 }) {
   const [recipes, setRecipes] = useState(initialResult.recipes);
-  const [hasMore, setHasMore] = useState(initialResult.offset + initialResult.recipes.length < initialResult.total);
+  const [hasMore, setHasMore] = useState(initialResult.hasMore);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -157,7 +157,7 @@ function InfiniteRecipeGrid({ initialResult, query, ingredient, selectedTags, ta
         const existing = new Set(current.map((recipe) => recipe.id));
         return [...current, ...page.recipes.filter((recipe) => !existing.has(recipe.id))];
       });
-      setHasMore(page.offset + page.recipes.length < page.total);
+      setHasMore(page.hasMore);
       setError(null);
     } catch (cause) {
       if (!(cause instanceof DOMException && cause.name === "AbortError")) setError("More recipes could not be loaded");
@@ -180,7 +180,7 @@ function InfiniteRecipeGrid({ initialResult, query, ingredient, selectedTags, ta
   return <>
     <div className="recipe-grid">{recipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} planSelection={planSelection} />)}</div>
     <div className="recipe-load-sentinel" ref={sentinelRef} aria-live="polite">
-      {loading ? <span><LoaderCircle className="spin" size={18} /> Loading recipes</span> : error ? <><span>{error}</span><Button type="button" variant="secondary" size="sm" onClick={() => { setError(null); void loadMore(); }}>Try again</Button></> : hasMore ? <span className="sr-only">More recipes load while scrolling</span> : <span>All {initialResult.total.toLocaleString()} recipes loaded</span>}
+      {loading ? <span><LoaderCircle className="spin" size={18} /> Loading recipes</span> : error ? <><span>{error}</span><Button type="button" variant="secondary" size="sm" onClick={() => { setError(null); void loadMore(); }}>Try again</Button></> : hasMore ? <span className="sr-only">More recipes load while scrolling</span> : <span>All {recipes.length.toLocaleString()} recipes loaded</span>}
     </div>
   </>;
 }
@@ -284,16 +284,16 @@ export default function Recipes({ loaderData, actionData }: Route.ComponentProps
         <section className="setup-state" aria-live="polite">
           <AlertCircle size={22} />
           <div>
-            <h2>The local catalog is not loaded yet</h2>
-            <p>Start the MongoDB gateway, run <code>npm run gateway:migrate</code>, then run <code>npm run import:sample</code>.</p>
+            <h2>The recipe catalog is temporarily unavailable</h2>
+            <p>Check the MongoDB gateway and database. For a new local database, run <code>npm run gateway:migrate:local</code>, then run <code>npm run import:sample</code>.</p>
             {import.meta.env.DEV ? <details><summary>Database detail</summary><pre>{unavailable}</pre></details> : null}
           </div>
         </section>
       ) : (
         <>
           <div className="result-heading">
-            <div><strong>{result.total.toLocaleString()}</strong> recipes</div>
-            <span>{selectedTags.length ? `Matching ${tagMatch === "all" ? "all" : "any"} selected tags` : query ? `Results for “${query}”` : "Browse the sample catalog"}</span>
+            <div><strong>{result.total ? `${result.total.value.toLocaleString()}${result.total.relation === "lowerBound" ? "+" : ""}` : `${result.recipes.length.toLocaleString()}+`}</strong> recipes</div>
+            <span>{selectedTags.length ? `Matching ${tagMatch === "all" ? "all" : "any"} selected tags` : query ? `Results for “${query}”` : "Browse the recipe catalog"}</span>
           </div>
           {result.recipes.length ? (
             <InfiniteRecipeGrid key={selectionUrl(recipeSearchUrl({ query, ingredient, tags: selectedTags, tagMatch, scope }))} initialResult={result} query={query} ingredient={ingredient} selectedTags={selectedTags} tagMatch={tagMatch} scope={scope} planSelection={planSelection} />

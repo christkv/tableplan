@@ -117,7 +117,7 @@ describe("gateway handler", () => {
   });
 
   it("rejects work above the configured in-flight ceiling", async () => {
-    let release!: (value: { recipes: never[]; total: number; limit: number; offset: number }) => void;
+    let release!: (value: { recipes: never[]; hasMore: boolean; total: { value: number; relation: "exact" }; limit: number; offset: number }) => void;
     recipes.search.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
     const handler = createGatewayHandler({ serviceToken: token, maxBodyBytes: 2048, maxInFlight: 1, ping: vi.fn(), recipes, tenant, plans, shopping, shares, apiKeys, ingestions, households, email, log: vi.fn() });
     const body = JSON.stringify({ contractVersion: STORAGE_CONTRACT_VERSION, requestId: "search-held", operation: "recipes.search", input: { search: {}, access: { userId: "user-1", householdId: "house-1" } } });
@@ -126,7 +126,7 @@ describe("gateway handler", () => {
     const overloaded = await handler(rpcRequest({ body: body.replace("search-held", "search-overload") }));
     expect(overloaded.status).toBe(503);
     await expect(overloaded.json()).resolves.toEqual({ error: "gateway_overloaded" });
-    release({ recipes: [], total: 0, limit: 24, offset: 0 });
+    release({ recipes: [], hasMore: false, total: { value: 0, relation: "exact" }, limit: 24, offset: 0 });
     expect((await held).status).toBe(200);
   });
 });

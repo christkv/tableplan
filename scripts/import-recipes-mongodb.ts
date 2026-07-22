@@ -9,6 +9,7 @@ import { Command } from "commander";
 import { parse } from "csv-parse";
 
 import { createMongoRuntime, type MongoConnectionConfig } from "../gateway/mongo";
+import { refreshCatalogRecipeFacets } from "../gateway/recipes";
 import { UNITS } from "../src/domain/quantity/units";
 import { parseRecipeRow, type CsvRecipeRow, type ParsedRecipeRow } from "../src/import/recipe-parser";
 
@@ -154,6 +155,7 @@ export async function importCatalog(sourcePath: string, options: { batchSize: nu
       }
     }
     await flush(database, batch);
+    await refreshCatalogRecipeFacets(database);
     await runs.updateOne({ _id: runId }, {
       $set: { checkpointRow: rowNumber, status: limited ? "paused" : "completed", updatedAt: new Date(), ...(limited ? {} : { completedAt: new Date() }) },
       $inc: { rowsImported: batch.recipes.length, rowsRejected: rejected },

@@ -52,6 +52,10 @@ Repeat `tag` to select multiple exact tags. `tagMatch=all` is the default and
 requires every selected tag; `tagMatch=any` requires at least one. Text,
 ingredient, and tag filters are combined with AND.
 Use `scope=all|catalog|mine|household` to drill into ownership and visibility.
+Recipe search returns `hasMore` for pagination. `total` contains a `value` and
+an `exact` or `lowerBound` relation when the fetched window can establish one;
+clients must use `hasMore`, rather than `total`, to decide whether to request
+another page.
 Recipe detail accepts an optional positive `servings` query parameter and
 returns `selectedServings`, `servingScale`, and adjusted parsed quantity fields.
 Unresolved raw ingredient lines remain unchanged.

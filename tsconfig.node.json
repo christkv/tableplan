@@ -10,7 +10,8 @@
     "src/domain/quantity/**/*",
     "src/import/**/*",
     "src/ingestion/extract.ts",
-    "src/ingestion/types.ts"
+    "src/ingestion/types.ts",
+    "src/observability/**/*"
   ],
   "compilerOptions": {
     "composite": true,

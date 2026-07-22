@@ -1,6 +1,6 @@
 import type { Db, Document, IndexDescription } from "mongodb";
 
-interface CollectionDefinition {
+export interface CollectionDefinition {
   name: string;
   indexes: IndexDescription[];
   validator?: Document;
@@ -18,7 +18,7 @@ export const collectionDefinitions: CollectionDefinition[] = [
   { name: "households", indexes: [], validator: objectValidator(["name"], { name: { bsonType: "string" }, timezone: { bsonType: ["string", "null"] } }) },
   { name: "household_memberships", indexes: [{ key: { householdId: 1, userId: 1 }, name: "membership_unique", unique: true }, { key: { userId: 1, createdAt: 1 }, name: "membership_user" }], validator: objectValidator(["householdId", "userId", "role"], { householdId: { bsonType: "string" }, userId: { bsonType: "string" }, role: { enum: ["owner", "adult", "viewer"] }, relationship: { bsonType: ["string", "null"] } }) },
   { name: "user_profiles", indexes: [{ key: { userId: 1 }, name: "profile_user_unique", unique: true, sparse: true }] },
-  { name: "recipes", indexes: [{ key: { sourceId: 1 }, name: "recipe_source", unique: true, sparse: true }, { key: { visibility: 1, status: 1, name: 1 }, name: "recipe_catalog_list" }, { key: { ownerUserId: 1, status: 1 }, name: "recipe_owner" }, { key: { ownerHouseholdId: 1, visibility: 1, status: 1 }, name: "recipe_household" }], validator: objectValidator(["name", "visibility", "status", "recipeIngredients", "steps", "tags"], { name: { bsonType: "string" }, visibility: { enum: ["catalog", "user_private", "household"] }, status: { enum: ["active", "archived"] }, recipeIngredients: { bsonType: "array" }, steps: { bsonType: "array" }, tags: { bsonType: "array" } }) },
+  { name: "recipes", indexes: [{ key: { sourceId: 1 }, name: "recipe_source", unique: true, sparse: true }, { key: { visibility: 1, status: 1, name: 1 }, name: "recipe_catalog_list" }, { key: { visibility: 1, status: 1, tags: 1, name: 1 }, name: "recipe_catalog_tags_list" }, { key: { ownerUserId: 1, status: 1 }, name: "recipe_owner" }, { key: { ownerHouseholdId: 1, visibility: 1, status: 1 }, name: "recipe_household" }], validator: objectValidator(["name", "visibility", "status", "recipeIngredients", "steps", "tags"], { name: { bsonType: "string" }, visibility: { enum: ["catalog", "user_private", "household"] }, status: { enum: ["active", "archived"] }, recipeIngredients: { bsonType: "array" }, steps: { bsonType: "array" }, tags: { bsonType: "array" } }) },
   { name: "ingredients", indexes: [{ key: { normalizedName: 1 }, name: "ingredient_name_unique", unique: true }] },
   { name: "ingredient_aliases", indexes: [{ key: { householdId: 1, normalizedAlias: 1 }, name: "ingredient_alias_scope", unique: true }] },
   { name: "units", indexes: [{ key: { canonicalName: 1 }, name: "unit_name_unique", unique: true }] },

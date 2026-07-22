@@ -8,7 +8,7 @@
   "observability": { "enabled": true },
   "vars": {
     "APP_ENV": "local",
-    "LOG_LEVEL": "DEBUG",
+    "LOG_LEVEL": "INFO",
     "BETTER_AUTH_URL": "http://127.0.0.1:5173",
     "PUBLIC_APP_URL": "http://127.0.0.1:5173",
     "PDF_MODE": "html-preview",

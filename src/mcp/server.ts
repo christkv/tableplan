@@ -33,7 +33,12 @@ export function createMealPlannerMcpServer(env: CloudflareEnvironment, access: A
     assertScope(access, "recipes:read");
     const recipes = await storage.searchRecipes({ query, ingredient, tags, tagMatch, scope, limit }, access);
     const compact = recipes.recipes.map(({ id, name, description, servings, tags, ingredients }) => ({ id, name, description, servings, tags: tags.slice(0, 8), ingredients: ingredients.slice(0, 8) }));
-    return result({ recipes: compact, total: recipes.total }, `Found ${recipes.total} matching recipes; returning ${compact.length}.`);
+    const matchCount = recipes.total === null
+      ? "The total number of matching recipes is unknown"
+      : recipes.total.relation === "exact"
+        ? `Found ${recipes.total.value} matching recipes`
+        : `Found at least ${recipes.total.value} matching recipes`;
+    return result({ recipes: compact, hasMore: recipes.hasMore, total: recipes.total }, `${matchCount}; returning ${compact.length}.`);
   });
 
   server.registerTool("list_saved_searches", {

@@ -5,7 +5,11 @@ export interface LogEnvironment {
   LOG_LEVEL?: string;
 }
 
-export type LogContext = Record<string, unknown>;
+export const FORMAT_LOG_CONTEXT = Symbol("tableplan.formatLogContext");
+
+export type LogContext = Record<string, unknown> & {
+  [FORMAT_LOG_CONTEXT]?: (context: LogContext) => string;
+};
 
 export interface Logger {
   debug(event: string, context?: LogContext): void;
@@ -22,7 +26,7 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
 export function resolveLogLevel(env: LogEnvironment): LogLevel {
   const configured = env.LOG_LEVEL?.trim().toUpperCase();
   if (configured === "DEBUG" || configured === "INFO" || configured === "ERROR") return configured;
-  return env.APP_ENV === "local" ? "DEBUG" : "INFO";
+  return "INFO";
 }
 
 export function errorLogContext(error: unknown): LogContext {
@@ -33,6 +37,18 @@ export function errorLogContext(error: unknown): LogContext {
 function emit(level: LogLevel, component: string, event: string, context: LogContext): void {
   const message = `[tableplan] ${level} ${component} ${event}`;
   try {
+    const formatter = context[FORMAT_LOG_CONTEXT];
+    if (formatter) {
+      try {
+        const formatted = `${message} ${formatter(context)}`;
+        if (level === "DEBUG") console.debug(formatted);
+        else if (level === "INFO") console.info(formatted);
+        else console.error(formatted);
+        return;
+      } catch {
+        // Fall back to the regular object output if custom rendering fails.
+      }
+    }
     if (level === "DEBUG") console.debug(message, context);
     else if (level === "INFO") console.info(message, context);
     else console.error(message, context);

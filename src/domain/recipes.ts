@@ -53,9 +53,15 @@ export interface RecipeSearchInput {
 
 export type RecipeTagMatch = "all" | "any";
 
+export interface RecipeSearchTotal {
+  value: number;
+  relation: "exact" | "lowerBound";
+}
+
 export interface RecipeSearchResult {
   recipes: RecipeSummary[];
-  total: number;
+  hasMore: boolean;
+  total: RecipeSearchTotal | null;
   limit: number;
   offset: number;
 }

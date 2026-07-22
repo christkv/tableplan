@@ -5,8 +5,8 @@ import { createLogger, errorLogContext, resolveLogLevel } from "./logger";
 afterEach(() => vi.restoreAllMocks());
 
 describe("resolveLogLevel", () => {
-  it("defaults local development to DEBUG and deployed environments to INFO", () => {
-    expect(resolveLogLevel({ APP_ENV: "local" })).toBe("DEBUG");
+  it("defaults every environment to INFO", () => {
+    expect(resolveLogLevel({ APP_ENV: "local" })).toBe("INFO");
     expect(resolveLogLevel({ APP_ENV: "preview" })).toBe("INFO");
     expect(resolveLogLevel({ APP_ENV: "production" })).toBe("INFO");
   });

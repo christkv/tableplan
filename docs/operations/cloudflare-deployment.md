@@ -63,6 +63,27 @@ curl -fsS https://<production-origin>/api/v1/health
 
 Schema migration, catalog import, gateway deployment, and Worker deployment are separate reviewed operations.
 
+## MongoDB index synchronization
+
+Index definitions in `gateway/schema.ts` are authoritative for every declared collection. Configure admin-capable MongoDB credentials in ignored environment files before running the environment-specific targets:
+
+```bash
+cp gateway/preview.env.example .env.gateway.preview
+cp gateway/production.env.example .env.gateway.production
+```
+
+Replace each `MONGODB_URI` placeholder with that environment's index-administration credential. Always inspect the plan before applying it:
+
+```bash
+npm run gateway:indexes:sync:preview -- --dry-run
+npm run gateway:indexes:sync:preview
+
+npm run gateway:indexes:sync:production -- --dry-run
+npm run gateway:indexes:sync:production -- --confirm-production
+```
+
+The command validates the exact environment/database mapping, creates missing collections with their declared validator when necessary, creates missing indexes, drops and rebuilds changed indexes, and removes obsolete named indexes. `_id_` is always preserved. Index removal can affect live query performance and takes a collection lock, so apply preview first and schedule production changes in a reviewed maintenance window.
+
 ## Smoke tests
 
 Verify health reports `mongodb-gateway`, then test authentication/Dash, catalog search, household isolation, planning, shopping, PDF, email/share links, invitation acceptance, private recipe ingestion, API keys, and MCP.
