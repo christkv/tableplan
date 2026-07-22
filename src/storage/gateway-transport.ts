@@ -22,7 +22,12 @@ export function resolveMongoGatewayTransport(env: MongoGatewayEnvironment): Mong
     return { baseUrl: internalGatewayOrigin, fetcher, kind: "service-binding" };
   }
   if (env.MONGODB_GATEWAY_URL) {
-    return { baseUrl: env.MONGODB_GATEWAY_URL, fetcher: fetch, kind: "url" };
+    // Cloudflare's global fetch validates its receiver. Do not pass the native
+    // function through directly: MongoGatewayClient stores it as an object
+    // property, and a later `options.fetcher()` call would supply the wrong
+    // `this` value and throw "Illegal invocation".
+    const fetcher = ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init)) as typeof fetch;
+    return { baseUrl: env.MONGODB_GATEWAY_URL, fetcher, kind: "url" };
   }
   throw new Error("MONGODB_GATEWAY service binding or MONGODB_GATEWAY_URL is required");
 }

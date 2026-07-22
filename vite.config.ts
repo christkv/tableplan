@@ -13,6 +13,11 @@ export default defineConfig({
     reactRouter(),
   ],
   resolve: {
+    // The application only uses MongoDB's types and Better Auth only needs
+    // ObjectId/UUID at runtime. Keep the network driver in the gateway Worker;
+    // using BSON here prevents its Node connection-string stack from entering
+    // Vite's Cloudflare runner (where `tr46` calls `require("punycode/")`).
+    alias: [{ find: /^mongodb$/, replacement: "bson" }],
     tsconfigPaths: true,
   },
 });

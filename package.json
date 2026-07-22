@@ -44,6 +44,7 @@
     "@openrouter/sdk": "^0.13.66",
     "agents": "^0.17.4",
     "better-auth": "latest",
+    "bson": "^7.2.0",
     "class-variance-authority": "latest",
     "clsx": "latest",
     "commander": "latest",
