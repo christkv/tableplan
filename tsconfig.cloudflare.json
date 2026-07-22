@@ -7,6 +7,7 @@
     "workers/**/*",
     "worker-configuration.d.ts"
   ],
+  "exclude": ["workers/mongodb-gateway.ts"],
   "compilerOptions": {
     "composite": true,
     "strict": true,

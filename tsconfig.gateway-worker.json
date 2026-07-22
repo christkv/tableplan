@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["workers/mongodb-gateway.ts"],
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types", "node"],
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}

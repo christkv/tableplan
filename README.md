@@ -1,6 +1,6 @@
 # Tableplan
 
-Tableplan is a family meal planner built with React Router and Cloudflare Workers. MongoDB is its only database. The Cloudflare application Worker reaches MongoDB through the separately deployed, bounded Node gateway in `gateway/`; it never opens database connections itself.
+Tableplan is a family meal planner built with React Router and Cloudflare Workers. MongoDB Atlas is its only database. In preview and production, the application reaches a private MongoDB gateway Worker through a Cloudflare service binding. One Durable Object owns the bounded MongoDB connection pool, so the application Worker never opens database connections itself. The Node gateway remains available as a local-development fallback.
 
 The catalog importer streams `data/recipes_ingredients.csv` directly into MongoDB with stable IDs, resumable checkpoints, duplicate-safe upserts, issue records, and a maximum four-connection pool.
 
@@ -23,7 +23,7 @@ Local data is isolated in `application_local`. The gateway listens at `http://12
 
 Keep local MongoDB indexes synchronized with the code definitions using `npm run gateway:indexes:sync:local -- --dry-run`, followed by `npm run gateway:indexes:sync:local`. Preview and production targets are documented in the Cloudflare deployment runbook.
 
-Logging defaults to `INFO`. Set `LOG_LEVEL=DEBUG`, `INFO`, or `ERROR` independently in `.dev.vars` (application Worker) and `.env.gateway.local` (MongoDB gateway). Gateway `INFO` logs include sanitized MongoDB command metadata and durations.
+Logging defaults to `INFO`. Set `LOG_LEVEL=DEBUG`, `INFO`, or `ERROR` independently in `.dev.vars` (application Worker) and `.env.gateway.local` (MongoDB gateway). Gateway `DEBUG` logs include sanitized MongoDB command payloads and durations; INFO retains lifecycle and RPC summaries without query details.
 
 `npm run import:sample` intentionally stops after 5,000 recipes. To import the entire raw catalog into the local database, omit the limit:
 

@@ -72,6 +72,9 @@
       "r2_buckets": [
         { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-preview" }
       ],
+      "services": [
+        { "binding": "MONGODB_GATEWAY", "service": "tableplan-mongodb-gateway-preview", "remote": true }
+      ],
       "durable_objects": {
         "bindings": [
           { "name": "RECIPE_INGESTION_AGENT", "class_name": "RecipeIngestionAgent" }
@@ -108,6 +111,9 @@
       },
       "r2_buckets": [
         { "binding": "PRIVATE_RECIPE_ASSETS", "bucket_name": "meal-planner-private-recipes-production" }
+      ],
+      "services": [
+        { "binding": "MONGODB_GATEWAY", "service": "tableplan-mongodb-gateway-production", "remote": true }
       ],
       "durable_objects": {
         "bindings": [

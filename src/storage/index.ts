@@ -1,15 +1,15 @@
 import { MongoGatewayStorageClient } from "./gateway-client";
+import { resolveMongoGatewayTransport, type MongoGatewayEnvironment } from "./gateway-transport";
 import type { StorageClient } from "./contract";
 
-type StorageEnvironment = CloudflareEnvironment & {
-  MONGODB_GATEWAY_URL?: string;
+type StorageEnvironment = CloudflareEnvironment & MongoGatewayEnvironment & {
   MONGODB_GATEWAY_SERVICE_TOKEN?: string;
 };
 
 function gateway(env: StorageEnvironment): MongoGatewayStorageClient {
-  if (!env.MONGODB_GATEWAY_URL) throw new Error("MONGODB_GATEWAY_URL is required");
   if (!env.MONGODB_GATEWAY_SERVICE_TOKEN) throw new Error("MONGODB_GATEWAY_SERVICE_TOKEN is required");
-  return new MongoGatewayStorageClient({ baseUrl: env.MONGODB_GATEWAY_URL, serviceToken: env.MONGODB_GATEWAY_SERVICE_TOKEN });
+  const transport = resolveMongoGatewayTransport(env);
+  return new MongoGatewayStorageClient({ baseUrl: transport.baseUrl, serviceToken: env.MONGODB_GATEWAY_SERVICE_TOKEN, fetcher: transport.fetcher });
 }
 
 export function createStorageClient(env: StorageEnvironment): StorageClient {

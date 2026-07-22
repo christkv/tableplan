@@ -4,7 +4,7 @@ import { mongoCommandContext } from "./mongo";
 import { createLogger } from "../src/observability/logger";
 
 describe("MongoDB command logging", () => {
-  it("reports the actual query at INFO-compatible command completion events", () => {
+  it("reports the actual query in command completion events", () => {
     const context = mongoCommandContext({
       commandName: "find",
       databaseName: "application_local",
@@ -73,10 +73,10 @@ describe("MongoDB command logging", () => {
       },
     });
 
-    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
-    createLogger({ LOG_LEVEL: "INFO" }, "mongodb").info("command.succeeded", { ...context, durationMs: 1 });
-    expect(info).toHaveBeenCalledOnce();
-    const consoleOutput = String(info.mock.calls[0][0]);
+    const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    createLogger({ LOG_LEVEL: "DEBUG" }, "mongodb").debug("command.succeeded", { ...context, durationMs: 1 });
+    expect(debug).toHaveBeenCalledOnce();
+    const consoleOutput = String(debug.mock.calls[0][0]);
     expect(consoleOutput).toContain('"pipeline": [');
     expect(consoleOutput).toContain('"$match": {');
     expect(consoleOutput).toContain('"$group": {');
@@ -84,7 +84,7 @@ describe("MongoDB command logging", () => {
     expect(consoleOutput).toContain('"$all": [');
     expect(consoleOutput).not.toContain("[Object]");
     expect(consoleOutput).not.toContain("[Array]");
-    expect(info.mock.calls[0]).toHaveLength(1);
-    info.mockRestore();
+    expect(debug.mock.calls[0]).toHaveLength(1);
+    debug.mockRestore();
   });
 });

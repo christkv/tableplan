@@ -31,8 +31,8 @@ const gatewayConfigSchema = z.object({
 
 export type GatewayConfig = z.infer<typeof gatewayConfigSchema>;
 
-export function loadGatewayConfig(environment: NodeJS.ProcessEnv): GatewayConfig {
-  const appEnv = environment.APP_ENV ?? "local";
+export function loadGatewayConfig(environment: Record<string, unknown>): GatewayConfig {
+  const appEnv = typeof environment.APP_ENV === "string" ? environment.APP_ENV : "local";
   const expectedDatabase = appEnv === "preview"
     ? "application_preview"
     : appEnv === "production"

@@ -45,7 +45,7 @@ function inspectableMongoCommand(command: Record<string, unknown>): Record<strin
   return redactMongoCommandValue(command) as Record<string, unknown>;
 }
 
-const formatMongoLogContext = (context: LogContext) => BSON.EJSON.stringify(context, { relaxed: true }, 2);
+const formatMongoLogContext = (context: LogContext) => BSON.EJSON.stringify(context, undefined, 2, { relaxed: true });
 
 export function mongoCommandContext(event: Pick<CommandStartedEvent, "commandName" | "databaseName" | "requestId" | "connectionId" | "command">) {
   const target = event.command[event.commandName];
@@ -87,7 +87,7 @@ export function createMongoRuntime(config: MongoConnectionConfig, suppliedLogger
     const key = commandKey(event);
     const context = commands.get(key) ?? { command: event.commandName, database: event.databaseName, requestId: event.requestId };
     commands.delete(key);
-    logger.info("command.succeeded", { ...context, durationMs: Math.round(event.duration * 100) / 100 });
+    logger.debug("command.succeeded", { ...context, durationMs: Math.round(event.duration * 100) / 100 });
   });
   client.on("commandFailed", (event) => {
     if (HIDDEN_COMMANDS.has(event.commandName)) return;

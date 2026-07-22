@@ -15,6 +15,8 @@ npm run gateway:dev
 npm run dev
 ```
 
+`npm run gateway:dev` runs the Node gateway. `npm run gateway:worker:dev` is an alternative that runs the same gateway runtime inside the Cloudflare Worker and Durable Object implementation on port `8790`; do not run both simultaneously.
+
 The gateway-only `.env.gateway.local` contains `mongodb://127.0.0.1:27017/?directConnection=true`, selects `application_local`, and binds the gateway to `127.0.0.1:8790`. The Worker-facing `.dev.vars` contains only:
 
 ```text
@@ -39,7 +41,7 @@ Vite normally uses `http://127.0.0.1:5173` and selects another port if it is occ
 
 `LOG_LEVEL` accepts `DEBUG`, `INFO`, or `ERROR` and defaults to `INFO` in every environment. Configure the application Worker in `.dev.vars` and the MongoDB gateway in `.env.gateway.local`; restart the corresponding process after changing either file.
 
-At `INFO`, the gateway prints its lifecycle and RPC events plus completed MongoDB commands with the database, collection, request/connection identifiers, actual query payload, duration, and outcome. Aggregation pipelines and their nested stages are rendered in full instead of being collapsed to `[Object]` by Node's console. Password, token, secret, authorization, cookie, credential, and API-key fields are recursively replaced with `[REDACTED]`; MongoDB authentication commands and command replies are never logged. `DEBUG` additionally prints command-start events and detailed application lifecycle events. `ERROR` prints failures only.
+At `INFO`, the gateway prints lifecycle and RPC summaries without MongoDB query payloads. `DEBUG` additionally prints MongoDB command-start and completion events with the database, collection, request/connection identifiers, actual query payload, duration, and outcome. Aggregation pipelines and their nested stages are rendered in full instead of being collapsed to `[Object]` by Node's console. Password, token, secret, authorization, cookie, credential, and API-key fields are recursively replaced with `[REDACTED]`; MongoDB authentication commands and command replies are never logged. `ERROR` prints failures only.
 
 For a one-off verbose gateway session without editing the file:
 
@@ -50,7 +52,7 @@ LOG_LEVEL=DEBUG npm run gateway:dev
 Example MongoDB log entry:
 
 ```text
-[tableplan] INFO mongodb command.succeeded { command: 'find', database: 'application_local', collection: 'recipes', requestId: 42, connectionId: 7, query: { find: 'recipes', filter: { status: 'active' }, limit: 24 }, durationMs: 3.21 }
+[tableplan] DEBUG mongodb command.succeeded { command: 'find', database: 'application_local', collection: 'recipes', requestId: 42, connectionId: 7, query: { find: 'recipes', filter: { status: 'active' }, limit: 24 }, durationMs: 3.21 }
 ```
 
 ## Import the complete recipe catalog

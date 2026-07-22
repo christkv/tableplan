@@ -1,0 +1,81 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tableplan-mongodb-gateway-local",
+  "main": "./workers/mongodb-gateway.ts",
+  "workers_dev": false,
+  "compatibility_date": "2026-07-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [
+      { "name": "MONGO_DO", "class_name": "MongoGatewayDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MongoGatewayDO"] }
+  ],
+  "vars": {
+    "APP_ENV": "local",
+    "LOG_LEVEL": "INFO",
+    "MONGO_LOCATION_HINT": "weur",
+    "MONGODB_DATABASE": "application_local",
+    "MONGODB_MAX_POOL_SIZE": "10",
+    "MONGODB_MIN_POOL_SIZE": "0",
+    "MONGODB_MAX_IDLE_TIME_MS": "60000",
+    "MONGODB_WAIT_QUEUE_TIMEOUT_MS": "2000",
+    "MONGODB_SERVER_SELECTION_TIMEOUT_MS": "3000",
+    "MONGODB_MAX_CONNECTING": "2",
+    "GATEWAY_MAX_BODY_BYTES": "1048576",
+    "GATEWAY_MAX_IN_FLIGHT": "100",
+    "BETTER_AUTH_URL": "http://127.0.0.1:5173"
+  },
+  "env": {
+    "preview": {
+      "name": "tableplan-mongodb-gateway-preview",
+      "durable_objects": {
+        "bindings": [
+          { "name": "MONGO_DO", "class_name": "MongoGatewayDO" }
+        ]
+      },
+      "vars": {
+        "APP_ENV": "preview",
+        "LOG_LEVEL": "INFO",
+        "MONGO_LOCATION_HINT": "weur",
+        "MONGODB_DATABASE": "application_preview",
+        "MONGODB_MAX_POOL_SIZE": "10",
+        "MONGODB_MIN_POOL_SIZE": "0",
+        "MONGODB_MAX_IDLE_TIME_MS": "60000",
+        "MONGODB_WAIT_QUEUE_TIMEOUT_MS": "2000",
+        "MONGODB_SERVER_SELECTION_TIMEOUT_MS": "3000",
+        "MONGODB_MAX_CONNECTING": "2",
+        "GATEWAY_MAX_BODY_BYTES": "1048576",
+        "GATEWAY_MAX_IN_FLIGHT": "100",
+        "BETTER_AUTH_URL": "https://family-meal-planner-preview.christkv.workers.dev"
+      }
+    },
+    "production": {
+      "name": "tableplan-mongodb-gateway-production",
+      "durable_objects": {
+        "bindings": [
+          { "name": "MONGO_DO", "class_name": "MongoGatewayDO" }
+        ]
+      },
+      "vars": {
+        "APP_ENV": "production",
+        "LOG_LEVEL": "INFO",
+        "MONGO_LOCATION_HINT": "weur",
+        "MONGODB_DATABASE": "application",
+        "MONGODB_MAX_POOL_SIZE": "10",
+        "MONGODB_MIN_POOL_SIZE": "0",
+        "MONGODB_MAX_IDLE_TIME_MS": "60000",
+        "MONGODB_WAIT_QUEUE_TIMEOUT_MS": "2000",
+        "MONGODB_SERVER_SELECTION_TIMEOUT_MS": "3000",
+        "MONGODB_MAX_CONNECTING": "2",
+        "GATEWAY_MAX_BODY_BYTES": "1048576",
+        "GATEWAY_MAX_IN_FLIGHT": "100",
+        "BETTER_AUTH_URL": "https://meal-planner.example.com"
+      }
+    }
+  }
+}

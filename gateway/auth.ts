@@ -6,7 +6,7 @@ import type { MongoClient, Db } from "mongodb";
 
 import type { GatewayConfig } from "./config";
 
-export function createGatewayAuth(config: GatewayConfig, database: Db, client: MongoClient) {
+export function createGatewayAuth(config: GatewayConfig, database: Db, client: MongoClient, runInBackground: (promise: Promise<unknown>) => void = (promise) => { void promise; }) {
   const google = config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET ? { google: { clientId: config.GOOGLE_CLIENT_ID, clientSecret: config.GOOGLE_CLIENT_SECRET } } : {};
   return betterAuth({
     appName: "Tableplan",
@@ -21,7 +21,7 @@ export function createGatewayAuth(config: GatewayConfig, database: Db, client: M
     advanced: {
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
       database: { generateId: () => crypto.randomUUID() },
-      backgroundTasks: { handler: (promise) => { void promise; } },
+      backgroundTasks: { handler: runInBackground },
     },
   });
 }
