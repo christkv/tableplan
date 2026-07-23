@@ -10,7 +10,7 @@ import org.springframework.validation.annotation.Validated
 @Validated
 @ConfigurationProperties("tableplan")
 data class TableplanProperties(
-    @field:NotBlank val publicOrigin: String = "http://localhost:8080",
+    @field:NotBlank val publicOrigin: String = "http://localhost:9090",
     val deliverySecret: String = "",
     @field:Valid val mongo: Mongo = Mongo(),
     @field:Valid val jobs: Jobs = Jobs(),

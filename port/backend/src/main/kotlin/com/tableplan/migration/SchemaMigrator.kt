@@ -15,7 +15,12 @@ data class MigrationReport(
     val dryRun: Boolean,
     val actions: List<String>,
     val atlasSearchNote: String =
-        "Atlas Search index recipes_v1 must be reconciled with Atlas administration APIs.",
+        "Run sync-indexes to reconcile the MongoDB Search index recipes_v1.",
+)
+
+data class SearchIndexMigrationReport(
+    val dryRun: Boolean,
+    val actions: List<String>,
 )
 
 @Service
@@ -81,6 +86,12 @@ class SchemaMigrator(
                 } else {
                     emptyMap()
                 }
+            schema.obsoleteIndexes
+                .filter(existingIndexes::containsKey)
+                .forEach { name ->
+                    actions += "drop obsolete index ${schema.name}.$name"
+                    if (!dryRun) database.getCollection(schema.name).dropIndex(name)
+                }
             schema.indexes.forEach { model ->
                 val name = requireNotNull(model.options.name)
                 val existing = existingIndexes[name]
@@ -102,6 +113,50 @@ class SchemaMigrator(
             )
         }
         return MigrationReport(dryRun, actions)
+    }
+
+    fun reconcileSearchIndexes(dryRun: Boolean): SearchIndexMigrationReport {
+        val actions = mutableListOf<String>()
+        SchemaManifest.searchIndexes.forEach { schema ->
+            val collection = database.getCollection(schema.collection)
+            val existing =
+                collection.listSearchIndexes()
+                    .toList()
+                    .firstOrNull { it.getString("name") == schema.name }
+            when {
+                existing == null -> {
+                    actions += "create search index ${schema.collection}.${schema.name}"
+                    if (!dryRun) collection.createSearchIndex(schema.name, schema.definition)
+                }
+                !hasRequiredSortableTokenMappings(existing, schema) -> {
+                    actions +=
+                        "update search index ${schema.collection}.${schema.name} " +
+                        "with sortable token mappings ${schema.requiredSortableTokenFields.sorted().joinToString(",")}"
+                    if (!dryRun) collection.updateSearchIndex(schema.name, schema.definition)
+                }
+            }
+        }
+        return SearchIndexMigrationReport(dryRun, actions)
+    }
+
+    private fun hasRequiredSortableTokenMappings(existing: Document, expected: SearchIndexSchema): Boolean {
+        val definition =
+            existing.get("latestDefinition", Document::class.java)
+                ?: existing.get("definition", Document::class.java)
+                ?: return false
+        val mappings = definition.get("mappings", Document::class.java) ?: return false
+        val fields = mappings.get("fields", Document::class.java) ?: return false
+        return expected.requiredSortableTokenFields.all { field ->
+            val mappingsForField =
+                when (val mapping = fields[field]) {
+                    is Document -> listOf(mapping)
+                    is List<*> -> mapping.filterIsInstance<Document>()
+                    else -> emptyList()
+                }
+            mappingsForField.any {
+                it.getString("type") == "token" && it.getString("normalizer") == "none"
+            }
+        }
     }
 
     private fun equivalentIndex(existing: Document, expected: com.mongodb.client.model.IndexModel): Boolean {

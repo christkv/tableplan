@@ -1,5 +1,12 @@
 import { defineConfig } from "vitest/config";
 
+const backend = "http://127.0.0.1:9090";
+const oauthProxy = {
+  target: backend,
+  changeOrigin: false,
+  xfwd: true,
+};
+
 export default defineConfig({
   test: {
     environment: "jsdom",
@@ -7,8 +14,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://127.0.0.1:8080",
-      "/mcp": "http://127.0.0.1:8080",
+      "/api": backend,
+      "/mcp": backend,
+      "/oauth2": oauthProxy,
+      "/login/oauth2": oauthProxy,
     },
   },
   build: {

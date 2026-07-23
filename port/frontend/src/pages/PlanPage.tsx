@@ -3,7 +3,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { cachedRequest, errorMessage, json, MealPlan, patch, Preferences, RecipeDetail, remove, request, ShoppingList } from "../api";
 import { Button, Input, Select } from "../components/ui";
-import { addDays, dayLabel, startOfIsoWeek, weekDates } from "../lib/domain";
+import { addDays, dayLabel, plannedServings, startOfIsoWeek, weekDates } from "../lib/domain";
 
 export function PlanPage() {
   const [params, setParams] = useSearchParams();
@@ -17,6 +17,7 @@ export function PlanPage() {
   const [preferences, setPreferences] = useState<Preferences>();
   const [shopping, setShopping] = useState<ShoppingList | null>();
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
   const load = useCallback(async () => {
     setError("");
     try {
@@ -39,6 +40,8 @@ export function PlanPage() {
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    setAdding(true);
+    setError("");
     try {
       const updated = await request<MealPlan>("/api/v1/meal-plans", json({
         week: start,
@@ -52,7 +55,11 @@ export function PlanPage() {
       setParams(next);
       setPlan(updated);
       setAddRecipe(null);
-    } catch (cause) { setError(errorMessage(cause, "Meal could not be added.")); }
+    } catch (cause) {
+      setError(errorMessage(cause, "Meal could not be added."));
+    } finally {
+      setAdding(false);
+    }
   }
   async function clone() {
     try {
@@ -92,7 +99,7 @@ export function PlanPage() {
     {error && <p className="form-error" role="alert">{error}</p>}
     {plan === undefined && <p className="recipe-load-sentinel"><LoaderCircle className="spin" /> Loading plan</p>}
     {!items.length && plan !== undefined && <section className="plan-copy"><div><Copy size={19} /><div><h2>Start from last week</h2><p>{previous?.items.length ? `Copy ${previous.items.length} planned meals, then adjust this week.` : "The previous week has no meals to copy."}</p></div></div><Button variant="secondary" disabled={!previous?.items.length} onClick={clone}><Copy size={16} /> Copy previous week</Button></section>}
-    {addRecipe && <section className="plan-add"><div><p className="eyebrow">Add recipe</p><h2>{addRecipe.name}</h2></div><form onSubmit={add}><input type="hidden" name="recipeId" value={addRecipe.id} /><label>Date<Select name="date" defaultValue={selectedDate}>{dates.map((date) => <option value={date} key={date}>{dayLabel(date)}</option>)}</Select></label><label>Section<Select name="slot" defaultValue={selectedSlot}>{configured.map((slot) => <option value={slot.id} key={slot.id}>{slot.label}</option>)}</Select></label><label>Servings<Input name="servings" type="number" min=".25" max="100" step=".25" defaultValue={Number(params.get("servings")) || addRecipe.servings || 4} /></label><Button><Plus size={17} /> Add</Button></form></section>}
+    {addRecipe && <section className="plan-add"><div><p className="eyebrow">Add recipe</p><h2>{addRecipe.name}</h2></div><form onSubmit={add}><input type="hidden" name="recipeId" value={addRecipe.id} /><label>Date<Select name="date" defaultValue={selectedDate}>{dates.map((date) => <option value={date} key={date}>{dayLabel(date)}</option>)}</Select></label><label>Section<Select name="slot" defaultValue={selectedSlot}>{configured.map((slot) => <option value={slot.id} key={slot.id}>{slot.label}</option>)}</Select></label><label>Servings<Input name="servings" type="number" min=".25" max="100" step=".25" defaultValue={plannedServings(params.get("servings") ?? addRecipe.servings)} /></label><Button disabled={adding}><Plus size={17} /> {adding ? "Adding…" : "Add"}</Button></form></section>}
     {preferences && <div className="week-grid"><div className="week-corner"><CalendarDays size={18} /></div>{dates.map((date) => <div className="day-heading" key={date}>{dayLabel(date)}</div>)}{slots.map((slot) => <div className="week-row" key={slot.id}><div className="slot-heading">{slot.label}</div>{dates.map((date) => {
       const dayItems = itemsByCell.get(`${date}|${slot.id}`) ?? [];
       return <div className="meal-slot-cell" key={`${date}-${slot.id}`}>{dayItems.map((item) => <article className="planned-meal" key={item.id}><Link to={`/recipes/${item.recipeId}?planItem=${item.id}`}>{item.recipeName}</Link><form className="plan-servings-form" onSubmit={(event) => updateServings(event, item.id)}><Input name="servings" type="number" min=".25" max="100" step=".25" defaultValue={item.servings} aria-label={`Servings for ${item.recipeName}`} /><Button variant="ghost" size="icon"><Check size={13} /></Button></form><Button className="plan-remove" variant="ghost" size="icon" onClick={() => removeItem(item.id)} aria-label={`Remove ${item.recipeName}`}><Trash2 size={14} /></Button></article>)}{slot.active && <Link className="meal-slot-add" to={`/recipes?planWeek=${start}&planDate=${date}&planSlot=${slot.id}`}><Plus size={15} /><span>Add</span></Link>}</div>;

@@ -10,6 +10,12 @@ React frontend.
 - Recipe browse uses `(name, _id)` keyset cursors; Atlas Search uses sequence-token cursors.
   Cursor state includes the number of consumed rows so cumulative result totals remain
   correct without `skip`.
+- The `recipes_v1` Search index maps `name` and the string `_id` as case-sensitive
+  `token` fields, matching the stable `(score, name, _id)` Search sort tuple required by
+  sequence-token pagination.
+- Catalog, private-owner, and household browse indexes all end in `(name, _id)`, allowing
+  MongoDB to merge the three visibility branches in index order without a collection scan
+  or blocking sort.
 - Search and favorite cards use Mongo projections. Favorite lists and shopping aggregation
   batch recipe IDs instead of issuing one query per recipe.
 - Ingredient review, selection validation, and publication batch alias, ingredient, and

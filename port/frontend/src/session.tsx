@@ -13,8 +13,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>();
   async function refresh() {
     const next = await request<Session | null>("/api/auth/session").catch(() => null);
-    setSession(next);
-    return next;
+    const normalized = next ?? null;
+    setSession(normalized);
+    return normalized;
   }
   useEffect(() => { void refresh(); }, []);
   const value = useMemo(() => ({ session, setSession, refresh }), [session]);

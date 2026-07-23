@@ -1,6 +1,7 @@
 package com.tableplan
 
 import com.tableplan.config.TableplanProperties
+import com.tableplan.config.DotenvLoader
 import com.tableplan.operator.OperatorCommandRunner
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -8,6 +9,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.scheduling.annotation.EnableScheduling
+import java.nio.file.Path
 import kotlin.system.exitProcess
 
 @SpringBootApplication
@@ -16,6 +18,8 @@ import kotlin.system.exitProcess
 class TableplanApplication
 
 fun main(args: Array<String>) {
+    println("Tableplan working directory: ${Path.of("").toAbsolutePath().normalize()}")
+    DotenvLoader.load()
     val command = args.firstOrNull()
     if (command == null || command == "serve" || command.startsWith("--")) {
         val serverArgs = if (command == "serve") args.drop(1).toTypedArray() else args

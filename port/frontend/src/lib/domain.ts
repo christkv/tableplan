@@ -19,6 +19,34 @@ export function weekDates(start: string): string[] {
   return Array.from({ length: 7 }, (_, index) => addDays(start, index));
 }
 
+export interface MealPlanSelection {
+  week: string;
+  date: string;
+  slot: string;
+}
+
+export function readMealPlanSelection(params: Pick<URLSearchParams, "get">): MealPlanSelection | null {
+  const requestedWeek = params.get("planWeek") ?? "";
+  const date = params.get("planDate") ?? "";
+  const slot = params.get("planSlot") ?? "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedWeek) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(slot)) return null;
+  try {
+    const week = startOfIsoWeek(requestedWeek);
+    return weekDates(week).includes(date) ? { week, date, slot } : null;
+  } catch {
+    return null;
+  }
+}
+
+export function plannedServings(value: unknown, fallback = 4): number {
+  const parsed = Number(value);
+  const candidate = Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  const bounded = Math.min(100, Math.max(.25, candidate));
+  return Math.round(bounded * 4) / 4;
+}
+
 export function dayLabel(date: string): string {
   return new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 }

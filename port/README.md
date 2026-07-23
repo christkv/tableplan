@@ -6,6 +6,9 @@ PDF export, and MCP.
 
 ## Build and run
 
+The application automatically loads an optional `.env` file from its current working
+directory. Start with `cp .env.example .env`; process environment variables take precedence.
+
 ```bash
 ./gradlew check :backend:bootJar
 ./scripts/check-performance-budgets.sh

@@ -6,6 +6,15 @@ Java 21, Node 22, npm 10, and either Docker Compose or a MongoDB 8 replica set.
 
 ## Start
 
+Create an optional local environment file from the checked-in example:
+
+```bash
+cp .env.example .env
+```
+
+The application loads `.env` from its current working directory before Spring starts.
+Existing process environment variables and JVM `-D` properties take precedence.
+
 ```bash
 docker compose up -d
 ./gradlew :backend:bootJar
@@ -28,3 +37,7 @@ java -jar backend/build/libs/tableplan.jar refresh-recipe-facets
 
 The production database name `application` additionally requires `--allow-production`.
 Operator modes do not start the HTTP server or job workers.
+
+`sync-indexes` also creates or updates the `recipes_v1` MongoDB Search index. Its `name`
+and `_id` fields are indexed as case-sensitive `token` mappings so relevance-sorted
+searches can use stable sequence-token pagination.

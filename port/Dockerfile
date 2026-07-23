@@ -17,6 +17,6 @@ COPY --from=extractor --chown=tableplan:tableplan /opt/extract/layers/spring-boo
 COPY --from=extractor --chown=tableplan:tableplan /opt/extract/layers/snapshot-dependencies/ ./
 COPY --from=extractor --chown=tableplan:tableplan /opt/extract/layers/application/ ./
 USER 10001:10001
-EXPOSE 8080
+EXPOSE 9090
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Duser.timezone=UTC", "org.springframework.boot.loader.launch.JarLauncher"]
 CMD ["serve"]

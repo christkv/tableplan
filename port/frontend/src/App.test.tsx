@@ -49,6 +49,16 @@ describe("frontend route parity", () => {
     await waitFor(() => expect(screen.getByText("No favorites yet")).toBeTruthy());
   });
 
+  it("shows sign in when the session endpoint returns an empty response", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(null, { status: 200, headers: { "Content-Length": "0" } }),
+    ));
+
+    render(<SessionProvider><MemoryRouter initialEntries={["/recipes"]}><App /></MemoryRouter></SessionProvider>);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in to Tableplan" })).toBeTruthy());
+  });
+
   it("renders the invitation error state without a credential", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json(null)));
     render(<SessionProvider><MemoryRouter initialEntries={["/household/join"]}><App /></MemoryRouter></SessionProvider>);

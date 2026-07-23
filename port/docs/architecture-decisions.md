@@ -32,8 +32,11 @@
   adapter with a bounded input, total request timeout, JSON validation, and no content logs.
 - SMTP is the production email adapter. Local execution uses a capture adapter that logs
   neither recipient nor message.
-- PDF export uses Apache PDFBox 3.0.8. This deliberately replaces browser rendering to keep
-  the runtime deterministic, bounded, and free from runtime browser downloads.
+- PDF export uses structured recipe, weekly-plan, shopping-list, and combined document models
+  rendered with Apache PDFBox 3.0.8. The layout ports the original Node export's typography,
+  recipe columns, weekly grid, meal cards, tags, and checklist styling while deliberately replacing
+  browser rendering to keep the runtime deterministic, bounded, and free from runtime browser
+  downloads.
 
 ## Protocol and operations
 

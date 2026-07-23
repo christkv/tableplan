@@ -13,6 +13,7 @@ spring:
       max-file-size: 10MB
       max-request-size: 11MB
 server:
+  port: ${SERVER_PORT:9090}
   shutdown: graceful
   forward-headers-strategy: framework
   compression:
@@ -27,7 +28,7 @@ management:
       probes:
         enabled: true
 tableplan:
-  public-origin: ${TABLEPLAN_PUBLIC_ORIGIN:http://localhost:8080}
+  public-origin: ${TABLEPLAN_PUBLIC_ORIGIN:http://localhost:9090}
   delivery-secret: ${TABLEPLAN_DELIVERY_SECRET:}
   mongo:
     uri: ${TABLEPLAN_MONGO_URI:mongodb://127.0.0.1:27017/?replicaSet=rs0}

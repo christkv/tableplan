@@ -23,11 +23,23 @@ class OperatorCommandRunner(
             pair[0] to pair.getOrElse(1) { "true" }
         }
         return when (command) {
-            "migrate", "sync-indexes" -> {
+            "migrate" -> {
                 guardProduction(options)
                 val report = migrations.reconcile(options["dry-run"] == "true")
                 report.actions.forEach(::println)
                 println(report.atlasSearchNote)
+                0
+            }
+            "sync-indexes" -> {
+                guardProduction(options)
+                val dryRun = options["dry-run"] == "true"
+                val schemaReport = migrations.reconcile(dryRun)
+                schemaReport.actions.forEach(::println)
+                val searchReport = migrations.reconcileSearchIndexes(dryRun)
+                searchReport.actions.forEach(::println)
+                if (schemaReport.actions.isEmpty() && searchReport.actions.isEmpty()) {
+                    println("All indexes are synchronized.")
+                }
                 0
             }
             "import-catalog" -> {

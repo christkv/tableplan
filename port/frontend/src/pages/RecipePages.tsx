@@ -51,7 +51,7 @@ import {
   put,
 } from "../api";
 import { Badge, Button, Input, Select } from "../components/ui";
-import { displayIngredientLine } from "../lib/domain";
+import { displayIngredientLine, plannedServings, readMealPlanSelection } from "../lib/domain";
 
 type Scope = "all" | "catalog" | "mine" | "household";
 type TagMatch = "all" | "any";
@@ -248,12 +248,15 @@ function draftFromForm(data: FormData): RecipeDraft {
 export function RecipeDetailPage() {
   const { recipeId = "" } = useParams();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [recipe, setRecipe] = useState<RecipeDetail>();
   const [preferences, setPreferences] = useState<Preferences>();
   const [favorite, setFavorite] = useState(false);
   const [servings, setServings] = useState<number | null>(null);
   const [planContext, setPlanContext] = useState<MealPlanItemContext | null>(null);
   const [error, setError] = useState("");
+  const [planError, setPlanError] = useState("");
+  const [addingToPlan, setAddingToPlan] = useState(false);
   useEffect(() => {
     const planItem = params.get("planItem");
     Promise.all([
@@ -289,16 +292,41 @@ export function RecipeDetailPage() {
     setServings(item.servings);
     setPlanContext({ ...planContext, servings: item.servings });
   }
+  async function addToSelectedPlan() {
+    if (!recipe) return;
+    const selection = readMealPlanSelection(params);
+    if (!selection) return;
+    setAddingToPlan(true);
+    setPlanError("");
+    try {
+      await request<MealPlan>("/api/v1/meal-plans", json({
+        week: selection.week,
+        recipeId: recipe.id,
+        date: selection.date,
+        slot: selection.slot,
+        servings: plannedServings(servings ?? recipe.servings),
+        notes: null,
+      }));
+      navigate(`/plan?week=${selection.week}`);
+    } catch (cause) {
+      setPlanError(errorMessage(cause, "Meal could not be added."));
+    } finally {
+      setAddingToPlan(false);
+    }
+  }
   if (error) return <div className="page-shell"><section className="setup-state"><AlertCircle size={22} /><p>{error}</p></section></div>;
   if (!recipe || !preferences) return <div className="page-shell"><p className="recipe-load-sentinel"><LoaderCircle className="spin" /> Loading recipe</p></div>;
   const scale = servings && recipe.servings ? servings / recipe.servings : 1;
-  const planSelection = params.get("planWeek") && params.get("planDate") && params.get("planSlot");
+  const planSelection = readMealPlanSelection(params);
+  const servingsForPlan = plannedServings(servings ?? recipe.servings);
+  const selectedSlotLabel = preferences.mealSlots.find((slot) => slot.id === planSelection?.slot)?.label;
   return <div className="page-shell detail-page">
     <Link to={planContext ? `/plan?week=${planContext.startsOn}` : "/recipes"} className="back-link"><ArrowLeft size={17} /> {planContext ? "Back to meal plan" : "Back to recipes"}</Link>
     {planContext && <section className="recipe-plan-context"><CalendarDays size={20} /><div><p className="eyebrow">Viewing from meal plan</p><strong>{planContext.planName}</strong><span>{planContext.plannedDate} · {planContext.mealSlot} · {planContext.servings} servings</span></div><Link to={`/plan?week=${planContext.startsOn}`}>View week</Link></section>}
     <header className="detail-header"><div><div className="tag-row">{recipe.visibility !== "catalog" && <Badge>{recipe.visibility === "user_private" ? "Only me" : "Household"}</Badge>}{recipe.tags.slice(0, 5).map((tag) => <Badge key={tag}>{tag}</Badge>)}</div><h1>{recipe.name}</h1><p>{recipe.description || "A recipe from the family catalog."}</p><div className="detail-meta"><span><Users size={17} /> {servings ?? "Unknown"} servings</span><span><Scale size={17} /> {preferences.measurementSystem === "original" ? "Original units" : preferences.measurementSystem === "metric" ? "Metric units" : "US customary units"}</span></div></div>
-      <div className="detail-actions"><a className="button button-secondary button-default" target="_blank" rel="noreferrer" href={`/api/v1/recipes/${recipe.id}/pdf`}><FileDown size={17} /> PDF</a><Button variant="secondary" size="icon" onClick={toggleFavorite} title={favorite ? "Remove favorite" : "Save favorite"}><Heart size={18} fill={favorite ? "currentColor" : "none"} /></Button>{recipe.isOwner && <Link className="button button-secondary button-icon" to={`/recipes/${recipe.id}/edit`}><Pencil size={17} /></Link>}{recipe.isOwner && <Button variant="secondary" onClick={toggleVisibility}>{recipe.visibility === "user_private" ? <Users size={17} /> : <LockKeyhole size={17} />}{recipe.visibility === "user_private" ? "Share" : "Make private"}</Button>}{planContext ? <Link className="button button-primary button-default" to={`/plan?week=${planContext.startsOn}`}><CalendarDays size={18} /> View meal plan</Link> : recipe.visibility !== "user_private" && <Link className="button button-primary button-default" to={planSelection ? `/plan?week=${params.get("planWeek")}&date=${params.get("planDate")}&slot=${params.get("planSlot")}&add=${recipe.id}&servings=${servings ?? recipe.servings ?? 4}` : `/plan?add=${recipe.id}&servings=${servings ?? recipe.servings ?? 4}`}><CalendarPlus size={18} /> Add to plan</Link>}</div>
+      <div className="detail-actions"><a className="button button-secondary button-default" target="_blank" rel="noreferrer" href={`/api/v1/recipes/${recipe.id}/pdf`}><FileDown size={17} /> PDF</a><Button variant="secondary" size="icon" onClick={toggleFavorite} title={favorite ? "Remove favorite" : "Save favorite"}><Heart size={18} fill={favorite ? "currentColor" : "none"} /></Button>{recipe.isOwner && <Link className="button button-secondary button-icon" to={`/recipes/${recipe.id}/edit`}><Pencil size={17} /></Link>}{recipe.isOwner && <Button variant="secondary" onClick={toggleVisibility}>{recipe.visibility === "user_private" ? <Users size={17} /> : <LockKeyhole size={17} />}{recipe.visibility === "user_private" ? "Share" : "Make private"}</Button>}{planContext ? <Link className="button button-primary button-default" to={`/plan?week=${planContext.startsOn}`}><CalendarDays size={18} /> View meal plan</Link> : recipe.visibility !== "user_private" && (planSelection ? <Button onClick={addToSelectedPlan} disabled={addingToPlan}><CalendarPlus size={18} /> {addingToPlan ? "Adding…" : `Add to ${selectedSlotLabel ?? planSelection.slot}`}</Button> : <Link className="button button-primary button-default" to={`/plan?add=${recipe.id}&servings=${servingsForPlan}`}><CalendarPlus size={18} /> Add to plan</Link>)}</div>
     </header>
+    {planError && <p className="form-error" role="alert">{planError}</p>}
     <div className="detail-columns"><section className="ingredients-panel"><div className="section-heading ingredient-heading"><div><p className="eyebrow">For the table</p><h2>Ingredients</h2></div>{servings !== null && (planContext ? <div className="serving-adjuster planned-serving-adjuster"><button className="serving-step" onClick={() => updatePlannedServings(Math.max(.25, servings - (servings < 1 ? .25 : 1)))}><Minus size={15} /></button><label>Planned servings<Input value={servings} type="number" min=".25" max="100" step=".25" onChange={(event) => setServings(Number(event.target.value))} onBlur={() => updatePlannedServings(servings)} /></label><button className="serving-step" onClick={() => updatePlannedServings(Math.min(100, servings + (servings < 1 ? .25 : 1)))}><Plus size={15} /></button></div> : <div className="serving-adjuster"><button className="serving-step" onClick={() => setServings(Math.max(.25, servings - (servings < 1 ? .25 : 1)))}><Minus size={15} /></button><label>Servings<Input value={servings} type="number" min=".25" max="1000" step=".25" onChange={(event) => setServings(Number(event.target.value))} /></label><button className="serving-step" onClick={() => setServings(Math.min(1000, servings + (servings < 1 ? .25 : 1)))}><Plus size={15} /></button></div>)}</div><ul className="ingredient-list">{recipe.recipeIngredients.map((item) =>
       <li key={item.id}><span className={`parse-dot ${item.parseStatus}`} /><span>{displayIngredientLine(item, preferences.measurementSystem, scale)}</span></li>
     )}</ul></section><section className="steps-panel"><div className="section-heading"><div><p className="eyebrow">Method</p><h2>Steps</h2></div><span>{recipe.steps.length} steps</span></div><ol className="step-list">{recipe.steps.map((step) => <li key={step.position}><span>{step.position + 1}</span><p>{step.instruction}</p></li>)}</ol></section></div>

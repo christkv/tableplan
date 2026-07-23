@@ -1,7 +1,10 @@
 package com.tableplan.auth
 
+import com.tableplan.api.ApiException
+import com.tableplan.api.REQUEST_ID_ATTRIBUTE
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.security.core.Authentication
@@ -15,17 +18,24 @@ class GoogleOAuthSuccessHandler(
     private val accounts: AccountService,
     private val sessions: SessionRepository,
 ) : AuthenticationSuccessHandler {
+    private val oauthLogger = LoggerFactory.getLogger(javaClass)
+
     override fun onAuthenticationSuccess(
         request: HttpServletRequest,
         response: HttpServletResponse,
         authentication: Authentication,
     ) {
+        val requestId = request.getAttribute(REQUEST_ID_ATTRIBUTE)?.toString() ?: "not-available"
         val oauth = authentication as? OAuth2AuthenticationToken
         if (oauth == null || oauth.authorizedClientRegistrationId != "google") {
-            response.sendRedirect("/auth/error?code=oauth_provider_invalid")
+            oauthLogger.error(
+                "Google OAuth sign-in failed code=oauth_provider_invalid requestId={}",
+                requestId,
+            )
+            response.sendRedirect(oauthErrorLocation("oauth_provider_invalid", requestId))
             return
         }
-        runCatching {
+        try {
             val attributes = oauth.principal.attributes
             val user =
                 accounts.authenticateGoogle(
@@ -46,9 +56,40 @@ class GoogleOAuthSuccessHandler(
                     .build()
                     .toString(),
             )
-            response.sendRedirect("/recipes")
-        }.onFailure {
-            response.sendRedirect("/auth/error?code=oauth_failed")
+            oauthLogger.info("Google OAuth sign-in succeeded requestId={}", requestId)
+            response.sendRedirect(oauthSuccessLocation(request))
+        } catch (error: Exception) {
+            val code = oauthFailureCode(error)
+            val safeMessage =
+                error.message.orEmpty()
+                    .replace(Regex("[\\r\\n\\t]"), " ")
+                    .take(240)
+                    .ifBlank { "<none>" }
+            oauthLogger.error(
+                "Google OAuth sign-in failed code={} requestId={} failureType={} message={}",
+                code,
+                requestId,
+                error.javaClass.simpleName,
+                safeMessage,
+            )
+            response.sendRedirect(oauthErrorLocation(code, requestId))
         }
     }
+}
+
+internal fun oauthFailureCode(error: Exception): String =
+    (error as? ApiException)?.code
+        ?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{1,128}")) }
+        ?: "oauth_failed"
+
+private fun oauthErrorLocation(
+    code: String,
+    requestId: String,
+) = "/auth/error?error=$code&request_id=$requestId"
+
+internal fun oauthSuccessLocation(request: HttpServletRequest): String {
+    val session = request.getSession(false)
+    val origin = session?.getAttribute(OAUTH_RETURN_ORIGIN_ATTRIBUTE) as? String
+    session?.removeAttribute(OAUTH_RETURN_ORIGIN_ATTRIBUTE)
+    return if (origin == null) "/recipes" else "${origin.trimEnd('/')}/recipes"
 }

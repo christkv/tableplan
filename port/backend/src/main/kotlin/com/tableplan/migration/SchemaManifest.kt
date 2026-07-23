@@ -11,6 +11,14 @@ data class CollectionSchema(
     val indexes: List<IndexModel> = emptyList(),
     val validator: Document? = null,
     val applicationCollection: Boolean = true,
+    val obsoleteIndexes: Set<String> = emptySet(),
+)
+
+data class SearchIndexSchema(
+    val collection: String,
+    val name: String,
+    val definition: Document,
+    val requiredSortableTokenFields: Set<String> = emptySet(),
 )
 
 object SchemaManifest {
@@ -32,6 +40,54 @@ object SchemaManifest {
                     "properties",
                     Document("_id", Document("bsonType", "string")).apply { putAll(properties) },
                 ),
+        )
+
+    val searchIndexes =
+        listOf(
+            SearchIndexSchema(
+                collection = "recipes",
+                name = "recipes_v1",
+                definition =
+                    Document(
+                        "mappings",
+                        Document("dynamic", false)
+                            .append(
+                                "fields",
+                                Document(
+                                    "_id",
+                                    Document("type", "token").append("normalizer", "none"),
+                                ).append(
+                                    "name",
+                                    listOf(
+                                        Document("type", "string"),
+                                        Document("type", "token").append("normalizer", "none"),
+                                    ),
+                                ).append(
+                                    "description",
+                                    Document("type", "string"),
+                                ).append(
+                                    "tags",
+                                    Document("type", "string"),
+                                ).append(
+                                    "recipeIngredients",
+                                    Document("type", "document")
+                                        .append(
+                                            "fields",
+                                            Document("ingredient", Document("type", "string"))
+                                                .append("rawLine", Document("type", "string")),
+                                        ),
+                                ).append(
+                                    "steps",
+                                    Document("type", "document")
+                                        .append(
+                                            "fields",
+                                            Document("instruction", Document("type", "string")),
+                                        ),
+                                ),
+                            ),
+                    ),
+                requiredSortableTokenFields = setOf("name", "_id"),
+            ),
         )
 
     val collections =
@@ -84,13 +140,29 @@ object SchemaManifest {
                     index(Document("sourceId", 1), "recipe_source", unique = true, sparse = true),
                     index(Document("visibility", 1).append("status", 1).append("name", 1), "recipe_catalog_list"),
                     index(
+                        Document("visibility", 1).append("status", 1).append("name", 1).append("_id", 1),
+                        "recipe_catalog_browse",
+                    ),
+                    index(
                         Document("visibility", 1).append("status", 1).append("tags", 1).append("name", 1),
                         "recipe_catalog_tags_list",
                     ),
                     index(Document("ownerUserId", 1).append("status", 1), "recipe_owner"),
                     index(
+                        Document("ownerUserId", 1).append("status", 1).append("name", 1).append("_id", 1),
+                        "recipe_owner_browse",
+                    ),
+                    index(
                         Document("ownerHouseholdId", 1).append("visibility", 1).append("status", 1),
                         "recipe_household",
+                    ),
+                    index(
+                        Document("ownerHouseholdId", 1)
+                            .append("visibility", 1)
+                            .append("status", 1)
+                            .append("name", 1)
+                            .append("_id", 1),
+                        "recipe_household_browse",
                     ),
                 ),
                 objectValidator(
@@ -321,6 +393,7 @@ object SchemaManifest {
                 "sessions",
                 listOf(ttl("expiresAt", "session_expiry"), index(Document("userId", 1), "session_user")),
                 applicationCollection = false,
+                obsoleteIndexes = setOf("session_token_unique"),
             ),
             CollectionSchema(
                 "jobs",

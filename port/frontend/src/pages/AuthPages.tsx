@@ -9,6 +9,13 @@ import { useSession } from "../session";
 export function SignInPage({ initialMode = "sign-in" }: { initialMode?: "sign-in" | "sign-up" }) {
   const [searchParams] = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
+  const oauthBackendOrigin = import.meta.env.DEV
+    ? (import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:9090`)
+    : "";
+  const googleAuthorizationUrl =
+    `${oauthBackendOrigin}/oauth2/authorization/google` +
+    `?returnTo=${encodeURIComponent(returnTo)}` +
+    `&return_origin=${encodeURIComponent(window.location.origin)}`;
   const [mode, setMode] = useState(initialMode);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +56,7 @@ export function SignInPage({ initialMode = "sign-in" }: { initialMode?: "sign-in
       <p className="eyebrow">{mode === "sign-in" ? "Welcome back" : "Create your household"}</p>
       <h2>{mode === "sign-in" ? "Sign in to Tableplan" : "Start planning meals"}</h2>
       <p>{mode === "sign-in" ? "Use your email, username, or Google account." : "Your first account becomes the household owner."}</p>
-      <a className="button button-secondary button-default google-button" href={`/oauth2/authorization/google?returnTo=${encodeURIComponent(returnTo)}`}><Globe size={18} /> Continue with Google</a>
+      <a className="button button-secondary button-default google-button" href={googleAuthorizationUrl}><Globe size={18} /> Continue with Google</a>
       <div className="auth-divider"><span>or</span></div>
       <form onSubmit={submit} className="auth-form">
         {mode === "sign-up" && <><label>Full name<Input name="name" required minLength={2} maxLength={100} autoComplete="name" /></label><label>Username<Input name="username" required minLength={3} maxLength={32} autoComplete="username" /></label></>}
@@ -69,11 +76,17 @@ const authMessages: Record<string, [string, string]> = {
   email_not_found: ["Google did not provide an email address", "Choose an account with an available email address."],
   invalid_code: ["The Google sign-in link expired", "Start a new Google sign-in. Callback links cannot be reused."],
   state_mismatch: ["The sign-in session expired", "Start again and make sure cookies are enabled."],
+  oauth_account_invalid: ["The linked Google account is unavailable", "Contact the administrator or use another sign-in method."],
+  oauth_email_invalid: ["Google returned an invalid email", "Choose a Google account with a valid email address."],
+  oauth_email_unverified: ["Your Google email is not verified", "Verify the email on your Google account before signing in."],
+  oauth_link_conflict: ["This Google account is already linked", "Use the account that originally linked this Google identity."],
+  oauth_provider_invalid: ["The Google sign-in response was invalid", "Return to sign in and start a new Google login."],
+  oauth_subject_invalid: ["Google did not return an account identity", "Return to sign in and try another Google account."],
 };
 
 export function AuthErrorPage() {
   const [params] = useSearchParams();
-  const code = params.get("error")?.match(/^[A-Za-z0-9_-]{1,128}$/)?.[0] ?? "unknown_error";
+  const code = (params.get("error") ?? params.get("code"))?.match(/^[A-Za-z0-9_-]{1,128}$/)?.[0] ?? "unknown_error";
   const requestId = params.get("request_id")?.match(/^[A-Za-z0-9_-]{1,128}$/)?.[0] ?? "not-available";
   const [title, detail] = authMessages[code] ?? ["Authentication failed", "The sign-in request could not be completed. Return to sign in and try again."];
   return <main className="error-page"><div><p className="eyebrow">Tableplan authentication</p><h1>{title}</h1><p>{detail}</p><p className="error-reference"><strong>Error:</strong> {code}<br /><strong>Reference:</strong> {requestId}</p><Link to="/sign-in">Return to sign in</Link></div></main>;

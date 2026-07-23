@@ -20,8 +20,10 @@ class ExportController(
     fun recipe(
         @PathVariable id: String,
         @RequestParam(defaultValue = "a4") paper: String,
+        @RequestParam(required = false) measurementSystem: String?,
+        @RequestParam(required = false) servings: Double?,
         authentication: Authentication,
-    ) = response(exports.recipe(authentication.principal(), id, paper))
+    ) = response(exports.recipe(authentication.principal(), id, paper, measurementSystem, servings))
 
     @GetMapping("/api/v1/meal-plans/{id}/pdf", produces = [MediaType.APPLICATION_PDF_VALUE])
     fun plan(
@@ -34,16 +36,41 @@ class ExportController(
     fun shopping(
         @PathVariable id: String,
         @RequestParam(defaultValue = "a4") paper: String,
+        @RequestParam(required = false) measurementSystem: String?,
+        @RequestParam(defaultValue = "true") includeCheckedItems: Boolean,
+        @RequestParam(defaultValue = "true") includeSourceRecipes: Boolean,
         authentication: Authentication,
-    ) = response(exports.shopping(authentication.principal(), id, paper))
+    ) = response(
+        exports.shopping(
+            authentication.principal(),
+            id,
+            paper,
+            measurementSystem,
+            includeCheckedItems,
+            includeSourceRecipes,
+        ),
+    )
 
     @GetMapping("/api/v1/meal-plans/{id}/combined.pdf", produces = [MediaType.APPLICATION_PDF_VALUE])
     fun combined(
         @PathVariable id: String,
         @RequestParam shoppingListId: String,
         @RequestParam(defaultValue = "a4") paper: String,
+        @RequestParam(required = false) measurementSystem: String?,
+        @RequestParam(defaultValue = "true") includeCheckedItems: Boolean,
+        @RequestParam(defaultValue = "true") includeSourceRecipes: Boolean,
         authentication: Authentication,
-    ) = response(exports.combined(authentication.principal(), id, shoppingListId, paper))
+    ) = response(
+        exports.combined(
+            authentication.principal(),
+            id,
+            shoppingListId,
+            paper,
+            measurementSystem,
+            includeCheckedItems,
+            includeSourceRecipes,
+        ),
+    )
 
     private fun response(document: ExportDocument): ResponseEntity<ByteArray> =
         ResponseEntity.ok()
