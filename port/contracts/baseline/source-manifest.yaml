@@ -1,0 +1,73 @@
+capturedAt: 2026-07-23
+source:
+  path: ".."
+  runtime: "React Router 8 on Cloudflare Workers"
+  database: "MongoDB Atlas"
+  sourceCommit: "b308cc9360ebc928517fa3e8386ddf70e1ab3476"
+counts:
+  explicitRoutes: 43
+  storageOperations: 64
+  managedCollections: 28
+databases:
+  local: application_local
+  preview: application_preview
+  production: application
+routeFamilies:
+  pages:
+    - /
+    - /sign-in
+    - /auth/error
+    - /household/join
+    - /shared/shopping
+    - /shared/shopping/{shareId}
+    - /recipes
+    - /recipes/new
+    - /recipes/import/{ingestionId}
+    - /recipes/{recipeId}/edit
+    - /recipes/{recipeId}
+    - /favorites
+    - /plan
+    - /shopping
+    - /settings
+  api:
+    - /api/v1/health
+    - /api/v1/recipes/search
+    - /api/v1/recipes/{recipeId}
+    - /api/v1/recipes/{recipeId}/pdf
+    - /api/v1/recipe-ingestions
+    - /api/v1/recipe-ingestions/{ingestionId}
+    - /api/v1/saved-searches
+    - /api/v1/saved-searches/{savedSearchId}
+    - /api/v1/meal-plans
+    - /api/v1/meal-plans/{planId}/pdf
+    - /api/v1/meal-plans/{planId}/combined.pdf
+    - /api/v1/meal-plan-items/{itemId}
+    - /api/v1/meal-plans/clone-previous
+    - /api/v1/shopping-lists/generate
+    - /api/v1/shopping-lists/latest
+    - /api/v1/shopping-lists/{listId}/pdf
+    - /api/v1/shopping-lists/{listId}/shares
+    - /api/v1/shopping-lists/{listId}/shares/{shareId}
+    - /api/v1/shopping-lists/{listId}/email
+    - /api/v1/email-deliveries/{deliveryId}
+    - /api/public/shopping/exchange
+    - /api/public/shopping/{shareId}
+    - /api/public/shopping/{shareId}/items/{itemId}
+    - /api/public/shopping/logout
+    - /api/public/household-invitations/exchange
+    - /api/v1/openapi.json
+    - /api/auth/*
+    - /mcp
+collections:
+  auth: [users, accounts, verifications, auth_error_events]
+  households: [households, household_memberships, user_profiles, household_invitations]
+  recipes: [recipes, ingredients, ingredient_aliases, units, tags, favourites, saved_recipe_searches, collections, collection_recipes]
+  planning: [meal_plans, shopping_lists, shopping_list_shares]
+  integrations: [api_keys, api_key_events, email_deliveries, idempotency_keys]
+  ingestion: [recipe_ingestions, recipe_mutation_events, import_runs, import_issues]
+compatibility:
+  ids: "String UUIDs; ObjectId is forbidden for Tableplan aggregate IDs"
+  timestamps: "BSON Date at rest, Instant in Kotlin, ISO-8601 UTC in JSON"
+  planDates: "ISO YYYY-MM-DD strings at rest and in JSON"
+  sessions: "Cloudflare Durable Object sessions intentionally expire at cutover"
+  schemaPolicy: "Preserve collection names, fields, BSON types, validators and named indexes"

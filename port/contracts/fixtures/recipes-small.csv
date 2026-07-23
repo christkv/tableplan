@@ -1,0 +1,3 @@
+id,name,description,ingredients_raw,steps,servings,serving_size,tags
+ci-1,Tomato Toast,Fast lunch,"[""2 slices bread"", ""1 lb tomatoes, chopped""]","[""Toast bread"", ""Top with tomatoes""]",2,1 plate,"[""Lunch"", ""Quick""]"
+ci-2,Garden Pasta,Simple supper,"[""250 g pasta"", ""2 cups spinach""]","[""Cook pasta"", ""Fold in spinach""]",4,1 bowl,"[""Dinner"", ""Vegetarian""]"

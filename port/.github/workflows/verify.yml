@@ -1,0 +1,63 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: ./gradlew check :backend:bootJar
+      - run: ./scripts/check-performance-budgets.sh
+      - name: Start MongoDB replica set
+        run: |
+          docker run --detach --name tableplan-mongo --publish 27017:27017 \
+            mongo:8.0.12 --replSet rs0 --bind_ip_all
+          for attempt in {1..30}; do
+            if docker exec tableplan-mongo mongosh --quiet --eval 'db.adminCommand({ping:1}).ok' | grep -q 1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec tableplan-mongo mongosh --quiet --eval \
+            'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+          for attempt in {1..30}; do
+            if docker exec tableplan-mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; then
+              break
+            fi
+            sleep 1
+          done
+      - name: Exercise schema and importer operators
+        env:
+          TABLEPLAN_MONGO_URI: mongodb://127.0.0.1:27017/?replicaSet=rs0
+          TABLEPLAN_MONGO_DATABASE: application_ci
+        run: |
+          java -jar backend/build/libs/tableplan.jar migrate
+          java -jar backend/build/libs/tableplan.jar migrate --dry-run
+          java -jar backend/build/libs/tableplan.jar import-catalog \
+            --file=contracts/fixtures/recipes-small.csv
+      - run: sha256sum backend/build/libs/tableplan.jar > backend/build/libs/tableplan.jar.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tableplan
+          path: |
+            backend/build/libs/tableplan.jar
+            backend/build/libs/tableplan.jar.sha256
+            backend/build/reports
+            odm/build/reports

@@ -1,8 +1,13 @@
 # Tableplan Kotlin API and React/Vite Port Research
 
-Status: proposed architecture and migration plan  
+Status: research complete; Spring Boot selected for implementation
 Date: 2026-07-23  
 Scope: replace the React Router/Cloudflare full-stack runtime with a Kotlin API backend and a React/Vite frontend while keeping MongoDB as the source of truth.
+
+> Decision update (2026-07-23): Spring Boot with Spring MVC is the committed backend
+> platform. The framework comparison and bake-off material below is retained as research
+> context, but it is no longer an implementation prerequisite. The executable roadmap is
+> [implementation-plan/README.md](implementation-plan/README.md).
 
 ## Executive summary
 
@@ -42,14 +47,17 @@ tableplan.jar
 The important decisions are:
 
 1. Use one Kotlin backend that connects directly to MongoDB. The current application Worker, Mongo gateway Worker, gateway RPC protocol, and Mongo Durable Object are removed.
-2. Select the HTTP framework through a focused bake-off. Spring MVC is the completeness/safety baseline; Micronaut is the leading performance-oriented challenger; Javalin is the minimal blocking challenger. Ktor, Quarkus, and http4k remain evaluated alternatives.
+2. Use Spring Boot with Spring MVC. It is the best delivery and security fit for the
+   synchronous ODM and the port's authentication, operations, and single-JAR requirements.
 3. Extract the QMplus ODM into a small, versioned Gradle module. Do not make Tableplan depend on the entire `qmplus-shared-core` artifact or on an absolute filesystem path in production.
 4. Keep the existing Mongo collection names, field names, BSON types, UUIDs, validators, and named indexes during the port.
 5. Embed `frontend/dist` in the executable JAR. In development, Vite proxies `/api`, `/mcp`, and download paths to Kotlin; in production, the embedded server serves both the API and SPA.
 6. Treat authentication as a distinct migration project. Better Auth and Cloudflare Durable Object sessions cannot simply move into Kotlin. Existing user IDs must remain stable, while all existing sessions can be intentionally invalidated at cutover.
 7. Port by vertical feature slice with contract and data-parity tests. Do not rewrite every layer and switch everything at once.
 
-The framework decision should not be based on a hello-world requests/second chart. Tableplan is dominated by Mongo queries, Atlas Search, authorization checks, JSON mapping, uploads, and external calls. The bake-off must measure those paths with the same application code and security behavior.
+Spring Boot capacity must not be judged by a hello-world requests/second chart. Tableplan is
+dominated by Mongo queries, Atlas Search, authorization checks, JSON mapping, uploads, and
+external calls. Performance tests must measure those paths with production security behavior.
 
 The highest risks are authentication compatibility, ODM extraction/hardening, preserving Mongo schema/index behavior, packaging frontend resources correctly, and replacing Cloudflare-specific background, object, email, document-conversion, and PDF services.
 
@@ -157,9 +165,17 @@ The implemented system includes:
 
 ### Framework decision
 
-Do not lock the port to Spring before measuring alternatives. Use Spring MVC as the feature-completeness baseline and compare it with Micronaut and Javalin using a real Tableplan vertical slice.
+Spring Boot with Spring MVC is selected. The application will use the servlet/blocking model
+and the synchronous Mongo driver; WebFlux is explicitly out of scope for this port.
 
-Provisional ranking:
+The decision favors delivery confidence, Spring Security, operational completeness, direct
+fit with blocking persistence, and the existing team's likely familiarity. Representative
+load and saturation tests remain mandatory, but they are capacity gates for the selected
+implementation rather than a framework competition.
+
+The earlier comparison is retained below as decision context.
+
+Historical provisional ranking:
 
 1. **Micronaut** — leading alternative if lower startup/memory and compile-time framework work are worth explicit blocking-executor and session implementation.
 2. **Spring MVC** — lowest delivery/security risk and the baseline that every alternative must beat in a meaningful way.
@@ -168,11 +184,13 @@ Provisional ranking:
 5. **Quarkus** — strong build-time optimization, security, health, and metrics, but its reactive core and build-time model add complexity for this synchronous reflection-heavy ODM.
 6. **http4k** — small, functional, testable, and blocking-friendly, but leaves the largest portion of the application platform to composition choices.
 
-The recommendation is a three-implementation spike, not six production prototypes:
+Before the Spring Boot decision, the research proposed a three-implementation spike:
 
 - Build the same read-only recipe/authenticated-session vertical slice in Spring MVC, Micronaut, and Javalin.
 - Keep Ktor and Quarkus as paper-evaluated fallbacks unless the team already has strong production experience with one.
 - Select only after measuring the representative workload and estimating security/operations implementation effort.
+
+That spike is superseded and will not be implemented.
 
 ### Non-negotiable framework fit
 
@@ -202,7 +220,8 @@ The selected framework must:
 | Quarkus | Explicit `uber-jar`; `META-INF/resources` static serving | REST endpoints must be correctly classified/annotated as blocking | Broad Quarkus Security/OIDC/CSRF feature set; first-party Mongo identity/session flow remains custom | Excellent SmallRye OpenAPI/Health, Micrometer, Mongo pool metrics | Strong build-time augmentation and JVM/native startup focus | Capable, but more conceptual friction with the chosen ODM than Micronaut/Spring |
 | http4k | Standard shaded JAR with selectable server | Natural synchronous functional handlers | OAuth/security lenses exist; full session/CSRF/account platform is composed by the application | Strong contract/OpenAPI and observability modules | Minimal/reflection-light core | Architecturally elegant, but too much platform assembly for the first port unless the team already uses it |
 
-“Runtime profile” is a framework-design assessment, not a measured result for Tableplan. No selection claim should use that column without the bake-off.
+“Runtime profile” is a framework-design assessment, not a Tableplan measurement. It explains
+the alternatives considered but is not part of the implementation gate.
 
 ### Spring MVC baseline
 
@@ -287,7 +306,9 @@ For this application, however, “same results as Spring” would require select
 
 ### Performance bake-off
 
-Use one shared `domain`, `application`, `persistence-mongo`, and `odm` implementation. Only the HTTP/security/bootstrap adapter should vary.
+The cross-framework bake-off is closed by the Spring Boot decision. The representative
+endpoint set and measurements below remain useful as the Spring Boot performance and capacity
+test plan; alternative HTTP/security/bootstrap adapters will not be built.
 
 Required endpoints:
 
@@ -299,7 +320,7 @@ Required endpoints:
 6. `GET /recipes` and one hashed asset — embedded SPA serving.
 7. One background lease/complete cycle while HTTP load is active.
 
-Run every candidate with:
+Run the Spring Boot implementation with:
 
 - The same JDK, JVM flags, container CPU/memory limits, Mongo deployment, pool settings, dataset, JSON mapper, logging level, and TLS/proxy topology.
 - Warm and cold runs.
@@ -321,12 +342,11 @@ Measure:
 - Build time and incremental developer restart time.
 - Lines/configuration required for auth, sessions, CSRF, errors, health, and observability.
 
-Selection rule:
+Capacity acceptance rule:
 
-- A framework must pass all functional/security gates before performance is compared.
-- Prefer the simplest complete option if p95 application latency and resource cost are materially equivalent.
-- Select Micronaut over Spring only if it shows a useful measured resource/startup or tail-latency benefit without increasing security/operational risk.
-- Select Javalin only if its measured benefit justifies owning the additional platform/security code.
+- All functional and security gates must pass before performance results are accepted.
+- Representative Mongo/auth/upload/job endpoints determine capacity, not only synthetic JSON.
+- Pool wait, timeout behavior, and tail latency must remain bounded under saturation.
 - Do not optimize on `/benchmark/json`; it exists only to explain framework overhead.
 
 Do not use WebFlux or another reactive API layer with this ODM. It adds a reactive abstraction without removing the blocking Mongo call.
@@ -823,15 +843,10 @@ Use a framework adapter around one Tableplan-owned authentication model:
 
 API keys and public share tokens remain independent authentication mechanisms.
 
-The implementation differs by framework:
-
-| Candidate | Authentication implementation |
-| --- | --- |
-| Spring MVC | Spring Security for login/OAuth/CSRF and Spring Session Mongo or a narrow custom session repository |
-| Micronaut | Micronaut Security/OAuth2 plus a tested custom Mongo-backed session store |
-| Javalin | Tableplan-owned filters/handlers and session repository; the spike must account for all OAuth, CSRF, fixation, logout, and header hardening code |
-
-Do not select a candidate merely because its login demo is short. The spike must prove session rotation, logout invalidation, CSRF rejection, OAuth state/nonce handling, cookie attributes, account linking rules, and authorization failures.
+Use Spring Security for login, OAuth, CSRF, and authorization, with Spring Session Mongo or a
+narrow custom session repository selected after an integration spike. The implementation must
+prove session rotation, logout invalidation, CSRF rejection, OAuth state/nonce handling,
+cookie attributes, account-linking rules, and authorization failures.
 
 ### Identity migration rules
 
@@ -1095,12 +1110,15 @@ Exit gate: the team can describe what parity means without referring to implemen
 - Implement Mongo configuration, liveness/readiness, structured logging, and request IDs.
 - Reproduce schema inspection and dry-run migration.
 - Complete the ODM qualification suite.
-- Build the Spring MVC, Micronaut, and Javalin adapters for the defined benchmark slice.
+- Build the Spring MVC adapter for the defined representative slice.
 - Prove frontend same-origin proxy and cookie round trip for development.
-- Produce and smoke-test each candidate as one executable JAR containing the Vite build.
-- Run the benchmark and record both runtime results and implementation/security complexity.
+- Produce and smoke-test one Spring Boot executable JAR containing the Vite build.
+- Run the representative load/saturation suite and record capacity, pool, startup, and
+  resource results.
 
-Exit gate: a Kotlin endpoint can read/write a UUID test document safely, the portable build passes without QMplus's full core artifact, a framework is selected from recorded evidence, and `java -jar tableplan.jar` serves both the API and SPA.
+Exit gate: a Kotlin endpoint can read/write a UUID test document safely, the portable build
+passes without QMplus's full core artifact, the Spring Boot capacity baseline is accepted, and
+`java -jar tableplan.jar` serves both the API and SPA.
 
 ### Phase 2: read-only recipe slice
 
@@ -1239,7 +1257,7 @@ No collection copy should be necessary if the Kotlin implementation preserves th
 | Schema/index mismatch | Query failures or data integrity regression | Declarative migration diff and dry-run |
 | Atlas Search definition is missed | Search fails after cutover | Capture/reconcile search index explicitly |
 | Blocking Mongo calls overload service | Request latency/thread exhaustion or event-loop stalls | Bounded request/blocking executor, Mongo pool budget, timeouts, saturation tests |
-| Framework benchmark favors synthetic throughput | Wrong framework selected | Gate on complete auth/ops behavior and representative Mongo endpoints before comparing performance |
+| Capacity test favors synthetic throughput | Production sizing is wrong | Gate on representative Mongo/auth/upload/job endpoints |
 | SPA conversion changes navigation/data behavior | UX regressions | Reuse JSX/CSS, browser parity tests |
 | Cloudflare workflows/queues are replaced poorly | Lost/stuck work | Persistent jobs, leases, retries, dead-letter state |
 | Raw tokens leak through logs/jobs | Account/share compromise | Hash at rest, encrypt retry secret, central redaction |
@@ -1248,18 +1266,20 @@ No collection copy should be necessary if the Kotlin implementation preserves th
 
 ## Open decisions
 
-These decisions should be resolved during Phases 0-1:
+These decisions are assigned to explicit phases in the implementation plan:
 
-1. Spring MVC, Micronaut, or Javalin after the prescribed vertical-slice bake-off. Recommendation: treat Spring as the completeness baseline and Micronaut as the leading performance-oriented challenger; do not decide from hello-world benchmarks.
-2. Extract ODM into this repository or publish a new `qmplus-odm` artifact upstream. Recommendation: upstream slim artifact if it can be done quickly; otherwise a provenance-tracked local module.
-3. Password migration compatibility after inspecting real Better Auth account records.
-4. Mongo-backed jobs or an existing managed queue in the target platform.
-5. Continue using R2 through S3, or move objects to another S3-compatible service.
-6. Chromium embedded with the service, or a dedicated PDF rendering service.
-7. Kotlin MCP library choice after protocol spike.
-8. Whether Node importer scripts remain temporarily as operator tools.
-9. Deployment platform, replica counts, region, and Mongo connection budget.
-10. Whether job pollers are enabled in every replica or only selected replicas through `JOBS_ENABLED`; the artifact remains identical.
+1. Extract ODM into this repository or publish a new `qmplus-odm` artifact upstream.
+   Recommendation: upstream slim artifact if it can be done quickly; otherwise a
+   provenance-tracked local module.
+2. Password migration compatibility after inspecting real Better Auth account records.
+3. Mongo-backed jobs or an existing managed queue in the target platform.
+4. Continue using R2 through S3, or move objects to another S3-compatible service.
+5. Chromium embedded with the service, or a dedicated PDF rendering service.
+6. Kotlin MCP library choice after protocol spike.
+7. Whether Node importer scripts remain temporarily as operator tools.
+8. Deployment platform, replica counts, region, and Mongo connection budget.
+9. Whether job pollers are enabled in every replica or only selected replicas through
+   `JOBS_ENABLED`; the artifact remains identical.
 
 ## Recommended immediate next work
 
@@ -1269,12 +1289,13 @@ The first implementation milestone should be deliberately small:
 2. Create `backend/odm` with the extracted source and provenance.
 3. Remove QMplus-specific dependencies from that module.
 4. Add the ODM qualification suite against replica-set Mongo.
-5. Scaffold shared domain/application/persistence modules plus thin Spring MVC, Micronaut, and Javalin adapters.
-6. Port the benchmark endpoints, including recipe search/detail and a minimal authenticated write.
-7. Package each candidate with the same Vite SPA into an executable JAR.
-8. Run the functional/security gates and benchmark matrix; record raw commands, configuration, and results.
-9. Select the framework and delete the two losing adapters before broader porting.
-10. Compare API responses and browser behavior before proceeding to the remaining features.
+5. Scaffold shared domain/application/persistence modules plus the Spring MVC adapter.
+6. Port the representative endpoints, including recipe search/detail and a minimal
+   authenticated write.
+7. Package the Vite SPA in the Spring Boot executable JAR.
+8. Run functional/security gates and the representative capacity suite; record commands,
+   configuration, and results.
+9. Compare API responses and browser behavior before proceeding to the remaining features.
 
 This sequence attacks the most architecture-specific uncertainty early while producing a demonstrable end-to-end vertical slice.
 
@@ -1296,7 +1317,9 @@ The port is complete when:
 
 ## Official framework sources
 
-Framework capabilities in this document were checked against official project documentation on 2026-07-23. They establish feature and packaging availability, not comparative performance; Tableplan-specific performance must come from the bake-off.
+Framework capabilities in this document were checked against official project documentation
+on 2026-07-23. They establish feature and packaging availability, not comparative
+performance. Tableplan-specific Spring Boot capacity must come from representative load tests.
 
 ### Spring Boot
 

@@ -1,0 +1,573 @@
+openapi: 3.1.0
+info:
+  title: Tableplan API
+  version: 1.0.0-spring
+  description: Checked-in contract for the Spring Boot Tableplan runtime.
+servers:
+  - url: /
+security:
+  - sessionCookie: []
+  - bearerAuth: []
+tags:
+  - { name: system }
+  - { name: auth }
+  - { name: recipes }
+  - { name: household }
+  - { name: planning }
+  - { name: shopping }
+  - { name: ingestion }
+  - { name: delivery }
+  - { name: mcp }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Tableplan API key with endpoint-specific scopes.
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: TABLEPLAN_SESSION
+    publicShareCookie:
+      type: apiKey
+      in: cookie
+      name: TABLEPLAN_SHARE
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, maxLength: 200 }
+    RecipeId:
+      name: recipeId
+      in: path
+      required: true
+      schema: { type: string, maxLength: 200 }
+    ListId:
+      name: listId
+      in: path
+      required: true
+      schema: { type: string, maxLength: 200 }
+  schemas:
+    Error:
+      type: object
+      required: [code, message, requestId]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        requestId: { type: string, format: uuid }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }
+    Session:
+      type: [object, "null"]
+      properties:
+        user:
+          type: object
+          required: [id, name, email, username]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            email: { type: string, format: email }
+            username: { type: string }
+        householdId: { type: string }
+    RecipeSummary:
+      type: object
+      required: [id, sourceId, name, description, tags, ingredients, qualityFlags, visibility, origin, isOwner]
+      properties:
+        id: { type: string }
+        sourceId: { type: string }
+        name: { type: string }
+        description: { type: string }
+        servings: { type: [number, "null"] }
+        tags: { type: array, items: { type: string } }
+        ingredients: { type: array, items: { type: string } }
+        qualityFlags: { type: array, items: { type: string } }
+        visibility: { enum: [catalog, user_private, household] }
+        origin: { enum: [dataset, manual, paste, upload] }
+        isOwner: { type: boolean }
+    RecipeSearchResult:
+      type: object
+      required: [recipes, hasMore, total, limit, offset, nextCursor]
+      properties:
+        recipes: { type: array, items: { $ref: "#/components/schemas/RecipeSummary" } }
+        hasMore: { type: boolean }
+        total:
+          oneOf:
+            - type: object
+              required: [value, relation]
+              properties:
+                value: { type: integer, minimum: 0 }
+                relation: { enum: [exact, lowerBound] }
+            - type: "null"
+        limit: { type: integer }
+        offset: { type: integer }
+        nextCursor: { type: [string, "null"] }
+    MealPlan:
+      type: object
+      required: [id, name, startsOn, endsOn, version, items]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        version: { type: integer, format: int64 }
+        items: { type: array, items: { type: object } }
+    ShoppingList:
+      type: object
+      required: [id, name, measurementSystem, version, items]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        measurementSystem: { enum: [original, metric, us] }
+        version: { type: integer, format: int64 }
+        items: { type: array, items: { type: object } }
+    RecipeDraft:
+      type: object
+      required: [title, ingredients, steps]
+      properties:
+        title: { type: string, maxLength: 240 }
+        description: { type: string, maxLength: 4000 }
+        servings: { type: [number, "null"] }
+        servingSize: { type: [string, "null"] }
+        ingredients: { type: array, maxItems: 250, items: { type: string } }
+        steps: { type: array, maxItems: 250, items: { type: string } }
+        tags: { type: array, maxItems: 30, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+    GenericObject: { type: object, additionalProperties: true }
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: Authentication is required.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: Principal, role, scope, CSRF, or Origin is denied.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Resource is absent or not visible.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+paths:
+  /health/live:
+    get:
+      tags: [system]
+      operationId: getLiveness
+      security: []
+      responses: { "200": { description: Process is live. } }
+  /health/ready:
+    get:
+      tags: [system]
+      operationId: getReadiness
+      security: []
+      responses:
+        "200": { description: MongoDB is reachable. }
+        "503": { description: Dependency is unavailable. }
+  /api/v1/health:
+    get:
+      tags: [system]
+      operationId: getApiHealth
+      security: []
+      responses: { "200": { description: API is ready. }, "503": { description: API is unavailable. } }
+  /api/v1/system/version:
+    get:
+      tags: [system]
+      operationId: getSystemVersion
+      security: []
+      responses:
+        "200":
+          description: Runtime and packaged application version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [application, version, runtime]
+                properties:
+                  application: { const: tableplan }
+                  version: { type: string }
+                  runtime: { const: spring-boot }
+  /api/v1/openapi.json:
+    get:
+      tags: [system]
+      operationId: getOpenApi
+      security: []
+      responses: { "200": { description: This contract represented as JSON. } }
+  /api/auth/csrf:
+    get:
+      tags: [auth]
+      operationId: getCsrfToken
+      security: []
+      responses: { "200": { description: CSRF header name and masked token. } }
+  /api/auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, username, password]
+              properties:
+                name: { type: string, maxLength: 100 }
+                email: { type: string, format: email, maxLength: 254 }
+                username: { type: string, minLength: 3, maxLength: 32 }
+                password: { type: string, minLength: 12, maxLength: 200, writeOnly: true }
+      responses:
+        "200": { description: Registered session., content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { description: Account conflict. }
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier: { type: string }
+                password: { type: string, writeOnly: true }
+      responses:
+        "200": { description: Authenticated session., content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: Password migration is required. }
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      responses: { "200": { description: Server session revoked. } }
+  /api/auth/session:
+    get:
+      tags: [auth]
+      operationId: getSession
+      security: []
+      responses:
+        "200": { description: Current session or null., content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
+  /api/auth/switch-household:
+    post:
+      tags: [auth, household]
+      operationId: switchHousehold
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [householdId], properties: { householdId: { type: string } } } } }
+      responses: { "200": { description: Session switched. }, "403": { $ref: "#/components/responses/Forbidden" } }
+  /api/v1/recipes/search:
+    get:
+      tags: [recipes]
+      operationId: searchRecipes
+      security: []
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 500 } }
+        - { name: ingredient, in: query, schema: { type: string, maxLength: 200 } }
+        - { name: tag, in: query, style: form, explode: true, schema: { type: array, maxItems: 12, items: { type: string } } }
+        - { name: tagMatch, in: query, schema: { enum: [all, any] } }
+        - { name: scope, in: query, schema: { enum: [all, catalog, mine, household] } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 100000 } }
+        - { name: cursor, in: query, schema: { type: string, maxLength: 2000 } }
+      responses:
+        "200": { description: Recipe results., content: { application/json: { schema: { $ref: "#/components/schemas/RecipeSearchResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /api/v1/recipes/facets:
+    get:
+      tags: [recipes]
+      operationId: getRecipeFacets
+      security: []
+      responses: { "200": { description: Tag facets. } }
+  /api/v1/recipes/{recipeId}:
+    parameters: [{ $ref: "#/components/parameters/RecipeId" }]
+    get:
+      tags: [recipes]
+      operationId: getRecipe
+      security: []
+      responses: { "200": { description: Recipe detail. }, "404": { $ref: "#/components/responses/NotFound" } }
+    put:
+      tags: [recipes]
+      operationId: updateOwnedRecipe
+      responses: { "200": { description: Recipe updated. }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/v1/recipes/{id}/pdf:
+    get:
+      tags: [recipes, delivery]
+      operationId: exportRecipePdf
+      parameters: [{ $ref: "#/components/parameters/Id" }, { name: paper, in: query, schema: { enum: [a4, letter], default: a4 } }]
+      responses: { "200": { description: PDF document., content: { application/pdf: { schema: { type: string, contentEncoding: binary } } } } }
+  /api/v1/recipes/{recipeId}/favourite:
+    get:
+      tags: [recipes]
+      operationId: getFavouriteState
+      parameters: [{ $ref: "#/components/parameters/RecipeId" }]
+      responses: { "200": { description: Current favourite state. } }
+    put:
+      tags: [recipes]
+      operationId: setFavourite
+      parameters: [{ $ref: "#/components/parameters/RecipeId" }]
+      responses: { "200": { description: Favourite state updated. } }
+  /api/v1/favourites:
+    get:
+      tags: [recipes]
+      operationId: listFavourites
+      responses: { "200": { description: Visible favourite recipes. } }
+  /api/v1/preferences:
+    get:
+      tags: [household]
+      operationId: getPreferences
+      responses: { "200": { description: Effective preferences. } }
+  /api/v1/preferences/measurement:
+    put:
+      tags: [household]
+      operationId: updateMeasurement
+      responses: { "200": { description: Preferences updated. } }
+  /api/v1/preferences/meal-slots:
+    put:
+      tags: [household]
+      operationId: updateMealSlots
+      responses: { "200": { description: Meal slots updated. } }
+  /api/v1/saved-searches:
+    get:
+      tags: [recipes]
+      operationId: listSavedSearches
+      responses: { "200": { description: Saved searches. } }
+    post:
+      tags: [recipes]
+      operationId: saveRecipeSearch
+      responses: { "200": { description: Search saved. }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/v1/saved-searches/{id}:
+    delete:
+      tags: [recipes]
+      operationId: deleteSavedSearch
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { description: Search deleted. } }
+  /api/v1/household:
+    get:
+      tags: [household]
+      operationId: getHousehold
+      responses: { "200": { description: Active household and members. } }
+  /api/v1/households:
+    get:
+      tags: [household]
+      operationId: listAvailableHouseholds
+      responses: { "200": { description: Households available to the authenticated member. } }
+  /api/v1/household/invitations:
+    get:
+      tags: [household]
+      operationId: listHouseholdInvitations
+      responses: { "200": { description: Pending invitations for the active household. }, "403": { $ref: "#/components/responses/Forbidden" } }
+    post:
+      tags: [household]
+      operationId: createHouseholdInvitation
+      responses: { "200": { description: Invitation; raw token appears once. }, "403": { $ref: "#/components/responses/Forbidden" } }
+  /api/v1/household/invitations/{id}:
+    delete:
+      tags: [household]
+      operationId: revokeHouseholdInvitation
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { description: Invitation revoked. } }
+  /api/public/household-invitations/{token}:
+    get:
+      tags: [household]
+      operationId: inspectHouseholdInvitation
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: Safe invitation metadata. }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/v1/household-invitations/{token}/accept:
+    post:
+      tags: [household]
+      operationId: acceptHouseholdInvitation
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: Invitation accepted. }, "403": { $ref: "#/components/responses/Forbidden" }, "409": { description: Invitation was already used. } }
+  /api/v1/api-keys:
+    get:
+      tags: [auth]
+      operationId: listApiKeys
+      responses: { "200": { description: Redacted API keys. } }
+    post:
+      tags: [auth]
+      operationId: createApiKey
+      responses: { "200": { description: API key; raw key appears once. }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/v1/api-keys/{id}:
+    delete:
+      tags: [auth]
+      operationId: revokeApiKey
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { description: API key revoked. } }
+  /api/v1/meal-plans:
+    get:
+      tags: [planning]
+      operationId: getMealPlan
+      parameters: [{ name: week, in: query, required: true, schema: { type: string, format: date } }]
+      responses: { "200": { description: Meal plan or null., content: { application/json: { schema: { oneOf: [{ $ref: "#/components/schemas/MealPlan" }, { type: "null" }] } } } } }
+    post:
+      tags: [planning]
+      operationId: addRecipeToPlan
+      responses: { "201": { description: Meal-plan item added. }, "409": { description: Plan changed. } }
+  /api/v1/meal-plan-items/{itemId}:
+    parameters: [{ name: itemId, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [planning]
+      operationId: getMealPlanItemContext
+      responses: { "200": { description: Meal-plan item and containing plan context. }, "404": { $ref: "#/components/responses/NotFound" } }
+    delete:
+      tags: [planning]
+      operationId: removeMealPlanItem
+      responses: { "200": { description: Removal result. } }
+    patch:
+      tags: [planning]
+      operationId: updateMealPlanServings
+      responses: { "200": { description: Updated plan. }, "409": { description: Plan changed. } }
+  /api/v1/meal-plans/clone-previous:
+    post:
+      tags: [planning]
+      operationId: clonePreviousMealPlan
+      responses: { "201": { description: Previous week copied. }, "409": { description: Target is not empty. } }
+  /api/v1/meal-plans/{id}/pdf:
+    get:
+      tags: [planning, delivery]
+      operationId: exportMealPlanPdf
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { description: PDF document., content: { application/pdf: { schema: { type: string, contentEncoding: binary } } } } }
+  /api/v1/meal-plans/{id}/combined.pdf:
+    get:
+      tags: [planning, delivery]
+      operationId: exportCombinedPdf
+      parameters: [{ $ref: "#/components/parameters/Id" }, { name: shoppingListId, in: query, required: true, schema: { type: string } }]
+      responses: { "200": { description: Combined plan and shopping PDF. } }
+  /api/v1/shopping-lists/generate:
+    post:
+      tags: [shopping]
+      operationId: generateShoppingList
+      responses: { "201": { description: Generated shopping list., content: { application/json: { schema: { $ref: "#/components/schemas/ShoppingList" } } } } }
+  /api/v1/shopping-lists/latest:
+    get:
+      tags: [shopping]
+      operationId: getLatestShoppingList
+      responses: { "200": { description: Latest list or null. } }
+  /api/v1/shopping-overview:
+    get:
+      tags: [shopping]
+      operationId: getShoppingOverview
+      responses: { "200": { description: Latest list, preferences, and share records in one response. } }
+  /api/v1/shopping-lists/{listId}:
+    get:
+      tags: [shopping]
+      operationId: getShoppingList
+      parameters: [{ $ref: "#/components/parameters/ListId" }]
+      responses: { "200": { description: Shopping list. }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/v1/shopping-lists/{listId}/refresh:
+    post:
+      tags: [shopping]
+      operationId: refreshShoppingList
+      parameters: [{ $ref: "#/components/parameters/ListId" }]
+      responses: { "200": { description: Refreshed list. }, "409": { description: List changed. } }
+  /api/v1/shopping-items/{itemId}:
+    patch:
+      tags: [shopping]
+      operationId: toggleShoppingItem
+      parameters: [{ name: itemId, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: Updated item and list version. } }
+  /api/v1/shopping-lists/{id}/pdf:
+    get:
+      tags: [shopping, delivery]
+      operationId: exportShoppingListPdf
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { description: PDF document. } }
+  /api/v1/shopping-lists/{listId}/shares:
+    parameters: [{ $ref: "#/components/parameters/ListId" }]
+    get:
+      tags: [shopping]
+      operationId: listShoppingShares
+      responses: { "200": { description: Redacted share records. } }
+    post:
+      tags: [shopping]
+      operationId: createShoppingShare
+      responses: { "200": { description: Share; raw token appears once. } }
+  /api/v1/shopping-lists/{listId}/shares/{shareId}:
+    delete:
+      tags: [shopping]
+      operationId: revokeShoppingShare
+      parameters:
+        - { $ref: "#/components/parameters/ListId" }
+        - { name: shareId, in: path, required: true, schema: { type: string } }
+      responses: { "200": { description: Revocation result. } }
+  /api/public/shopping/exchange:
+    post:
+      tags: [shopping]
+      operationId: exchangeShoppingShare
+      security: []
+      responses: { "200": { description: Share-bound HttpOnly cookie set. }, "401": { $ref: "#/components/responses/Unauthorized" } }
+  /api/public/shopping/{shareId}:
+    get:
+      tags: [shopping]
+      operationId: getPublicShoppingList
+      security: [{ publicShareCookie: [] }]
+      parameters: [{ name: shareId, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: Public list with source details removed. }, "401": { $ref: "#/components/responses/Unauthorized" } }
+  /api/public/shopping/{shareId}/items/{itemId}:
+    patch:
+      tags: [shopping]
+      operationId: togglePublicShoppingItem
+      security: [{ publicShareCookie: [] }]
+      parameters:
+        - { name: shareId, in: path, required: true, schema: { type: string } }
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      responses: { "200": { description: Updated public list. } }
+  /api/public/shopping/logout:
+    post:
+      tags: [shopping]
+      operationId: clearPublicShoppingShare
+      security: []
+      responses: { "200": { description: Share cookie cleared. } }
+  /api/v1/recipe-ingestions:
+    post:
+      tags: [ingestion]
+      operationId: createRecipeIngestion
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, required: [text], properties: { text: { type: string, maxLength: 102400 }, filename: { type: [string, "null"] } } } }
+          multipart/form-data: { schema: { type: object, required: [file], properties: { file: { type: string, contentEncoding: binary } } } }
+      responses: { "202": { description: Ingestion queued. }, "413": { description: Artifact rejected. }, "415": { description: Media type is unsupported. } }
+  /api/v1/recipe-ingestions/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [ingestion]
+      operationId: getRecipeIngestion
+      responses: { "200": { description: Safe ingestion state. }, "404": { $ref: "#/components/responses/NotFound" } }
+    post:
+      tags: [ingestion]
+      operationId: publishRecipeIngestion
+      responses: { "201": { description: Recipe published. }, "409": { description: Draft is not ready. } }
+  /api/v1/shopping-lists/{listId}/email:
+    post:
+      tags: [delivery]
+      operationId: emailShoppingList
+      parameters: [{ $ref: "#/components/parameters/ListId" }]
+      responses: { "202": { description: Delivery queued. }, "503": { description: Delivery encryption/provider is not configured. } }
+  /api/v1/email-deliveries/{id}:
+    get:
+      tags: [delivery]
+      operationId: getEmailDelivery
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { description: Redacted delivery state. }, "404": { $ref: "#/components/responses/NotFound" } }
+  /mcp:
+    get:
+      tags: [mcp]
+      operationId: getMcpStream
+      responses: { "405": { description: Server does not open an SSE stream; use POST JSON responses. } }
+    post:
+      tags: [mcp]
+      operationId: postMcpMessage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [jsonrpc, method], additionalProperties: true } } }
+      responses:
+        "200": { description: JSON-RPC response. }
+        "202": { description: JSON-RPC notification accepted. }
+        "400": { description: Unsupported protocol version. }
+        "403": { $ref: "#/components/responses/Forbidden" }

@@ -1,0 +1,65 @@
+# Gradle, Kotlin and JVM build output
+.gradle/
+.kotlin/
+**/build/
+out/
+*.class
+hs_err_pid*
+replay_pid*
+
+# Node, Vite and frontend test output
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Application runtime and operator output
+artifacts/
+backups/
+mongo-data/
+.mongo/
+*.archive
+*.archive.sha256
+*.pid
+*.log
+
+# IDE and editor metadata
+.idea/
+.fleet/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*~
+
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
