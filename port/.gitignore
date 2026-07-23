@@ -30,7 +30,7 @@ pnpm-debug.log*
 *.key
 
 # Application runtime and operator output
-artifacts/
+/artifacts/
 backups/
 mongo-data/
 .mongo/
