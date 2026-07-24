@@ -97,6 +97,6 @@ The JAR was started only with `java -jar ... serve` plus local configuration.
 ## Not executed
 
 No production or preview system was read or changed. Atlas Search administration, real
-Better Auth password samples, Google OAuth, S3, OpenRouter, SMTP, backup/restore rehearsal,
+Better Auth password samples, Google OAuth, S3, OpenRouter, Cloudflare email delivery, backup/restore rehearsal,
 load/soak tests, container/SBOM scanning, deployment, traffic shifting, observation, and old
 runtime retirement require external configuration and authorization.

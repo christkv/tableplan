@@ -43,6 +43,7 @@ class SessionRepository(
             Document("_id", CryptoSupport.sha256(token))
                 .append("userId", userId)
                 .append("householdId", householdId)
+                .append("authVersion", CURRENT_AUTH_VERSION)
                 .append("createdAt", Date.from(now))
                 .append("lastSeenAt", Date.from(now))
                 .append("expiresAt", Date.from(expiresAt)),
@@ -58,6 +59,7 @@ class SessionRepository(
             sessions.find(
                 Filters.and(
                     Filters.eq("_id", id),
+                    Filters.eq("authVersion", CURRENT_AUTH_VERSION),
                     Filters.gt("expiresAt", Date.from(now)),
                 ),
             ).first() ?: return null
@@ -86,6 +88,7 @@ class SessionRepository(
             Filters.and(
                 Filters.eq("_id", CryptoSupport.sha256(token)),
                 Filters.eq("userId", userId),
+                Filters.eq("authVersion", CURRENT_AUTH_VERSION),
                 Filters.gt("expiresAt", Date.from(clock.instant())),
             ),
             Updates.combine(
@@ -93,5 +96,9 @@ class SessionRepository(
                 Updates.set("lastSeenAt", Date.from(clock.instant())),
             ),
         ).modifiedCount == 1L
+    }
+
+    private companion object {
+        const val CURRENT_AUTH_VERSION = 2
     }
 }

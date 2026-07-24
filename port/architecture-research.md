@@ -156,7 +156,7 @@ The implemented system includes:
 | Ingestion orchestration | Agents + Workflows | Replace with persistent Kotlin worker jobs |
 | Private artifacts | R2 binding | Use R2 through its S3 API or another S3-compatible store |
 | Email jobs | Cloudflare Queue | Replace with selected queue or Mongo-leased jobs |
-| Email sending | email binding | Replace with provider/SMTP adapter |
+| Email sending | email binding | Replace with Cloudflare REST adapter |
 | Document-to-Markdown | Workers AI `toMarkdown` | Replace with JVM extraction and/or provider adapter |
 | PDF rendering | Browser Rendering binding | Replace with Chromium/Playwright or a PDF service |
 | Runtime observability | Workers observability/logs | Replace with structured logs, metrics, and traces |
@@ -993,7 +993,7 @@ Keep OpenRouter behind a `RecipeExtractor` port. Validate its structured respons
 
 ### Email
 
-Retain the existing claim/update/idempotency state machine. Replace the Cloudflare email binding with an `EmailSender` adapter for the selected provider or SMTP.
+Retain the existing claim/update/idempotency state machine. Replace the Cloudflare email binding with a Cloudflare REST `EmailSender` adapter.
 
 Queue messages must never be the only copy of a raw share token. If retry requires the token, store an encrypted short-lived delivery secret or design the job payload store accordingly. Never log the token.
 

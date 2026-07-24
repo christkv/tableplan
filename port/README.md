@@ -5,7 +5,7 @@ Table Rhythm brings household recipes, weekly meal planning, and one useful shop
 The codebase retains its original `tableplan` package, artifact, and environment-variable identifiers for deployment compatibility.
 
 The replacement runtime is implemented in Kotlin/Spring Boot with an embedded React/Vite
-SPA, direct MongoDB persistence, Mongo-leased jobs, S3-compatible artifacts, SMTP delivery,
+SPA, direct MongoDB persistence, Mongo-leased jobs, S3-compatible artifacts, Cloudflare REST email delivery,
 PDF export, and MCP.
 
 ## Build and run
@@ -63,7 +63,7 @@ behavior, and production proxy requirements.
 - `odm` — independent hardened string-ID Mongo mapper.
 - `frontend` — isolated full React/Vite page port embedded by the Gradle build; see its
   [route and development guide](frontend/README.md).
-- `contracts` — source baseline, executable CSV fixture, and checked-in 64-operation OpenAPI.
+- `contracts` — source baseline, executable CSV fixture, and checked-in 68-operation OpenAPI.
 - `implementation-plan` — phase-by-phase design and gates.
 - `docs/runbooks` — local, deployment, backup/restore, incident, and cutover procedures.
 

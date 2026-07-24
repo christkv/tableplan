@@ -1,5 +1,6 @@
 export const PRODUCT_NAME = "Table Rhythm";
 export const PRODUCT_DOMAIN = "tablerhythm.com";
+export const PRODUCT_STAGE = "Alpha";
 
 export function BrandMark({ className = "" }: { className?: string }) {
   return <span className={`brand-mark${className ? ` ${className}` : ""}`} aria-hidden="true">
@@ -13,5 +14,8 @@ export function BrandMark({ className = "" }: { className?: string }) {
 }
 
 export function BrandName() {
-  return <span className="brand-name">{PRODUCT_NAME}</span>;
+  return <span className="brand-lockup">
+    <span className="brand-name">{PRODUCT_NAME}</span>
+    <span className="product-stage" aria-label={`${PRODUCT_STAGE} release`}>{PRODUCT_STAGE}</span>
+  </span>;
 }

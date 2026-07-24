@@ -48,6 +48,22 @@ if [[ -n "$google_client_id" || -n "$google_client_secret" || -n "$google_redire
     fi
 fi
 
+cloudflare_account_id="$(property_value tableplan.email.cloudflare-account-id)"
+cloudflare_api_token="$(property_value tableplan.email.cloudflare-api-token)"
+email_from_address="$(property_value tableplan.email.from-address)"
+missing_email_properties=()
+[[ -n "$cloudflare_account_id" ]] ||
+    missing_email_properties+=("tableplan.email.cloudflare-account-id")
+[[ -n "$cloudflare_api_token" ]] ||
+    missing_email_properties+=("tableplan.email.cloudflare-api-token")
+[[ -n "$email_from_address" ]] ||
+    missing_email_properties+=("tableplan.email.from-address")
+if ((${#missing_email_properties[@]} > 0)); then
+    echo "Cloudflare email configuration is incomplete." >&2
+    printf 'Missing: %s\n' "${missing_email_properties[@]}" >&2
+    exit 1
+fi
+
 tableplan_load_servers "$inventory"
 configured_server_port="$(property_value server.port)"
 configured_server_port="${configured_server_port:-9090}"

@@ -5,6 +5,9 @@ import { ProtectedLayout } from "./components/Layout";
 
 const SignInPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.SignInPage })));
 const AuthErrorPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.AuthErrorPage })));
+const VerifyEmailPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.VerifyEmailPage })));
+const ForgotPasswordPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.ResetPasswordPage })));
 const HouseholdJoinPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.HouseholdJoinPage })));
 const FavoritesPage = lazy(() => import("./pages/FavoritesPage").then((module) => ({ default: module.FavoritesPage })));
 const PlanPage = lazy(() => import("./pages/PlanPage").then((module) => ({ default: module.PlanPage })));
@@ -21,6 +24,9 @@ const SharedShoppingPage = lazy(() => import("./pages/ShoppingPages").then((modu
 export const FRONTEND_PAGE_ROUTES = [
   "/",
   "/sign-in",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
   "/auth/error",
   "/household/join",
   "/shared/shopping",
@@ -43,6 +49,9 @@ export function App() {
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/login" element={<SignInPage />} />
       <Route path="/register" element={<SignInPage initialMode="sign-up" />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/auth/error" element={<AuthErrorPage />} />
       <Route path="/household/join" element={<HouseholdJoinPage />} />
       <Route path="/shared/shopping" element={<SharedExchangePage />} />

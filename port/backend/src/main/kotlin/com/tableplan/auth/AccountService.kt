@@ -21,6 +21,7 @@ data class AccountUser(
     val email: String,
     val username: String,
     val householdId: String,
+    val emailVerified: Boolean,
 )
 
 @Service
@@ -110,7 +111,7 @@ class AccountService(
         } catch (_: MongoWriteException) {
             throw ApiException(409, "account_exists", "An account already uses that email or username.")
         }
-        return AccountUser(userId, name, email, username, householdId)
+        return AccountUser(userId, name, email, username, householdId, emailVerified = false)
     }
 
     fun authenticate(identifierInput: String, password: String): AccountUser {
@@ -139,10 +140,67 @@ class AccountService(
             )
         }
         if (!passwordEncoder.matches(password, hash)) invalidCredentials()
+        if (user.getBoolean("emailVerified", false) != true) {
+            throw ApiException(
+                403,
+                "email_verification_required",
+                "Confirm your email address before signing in.",
+            )
+        }
         return userView(user)
     }
 
     fun find(userId: String): AccountUser? = users.find(Filters.eq("_id", userId)).first()?.let(::userView)
+
+    fun findByEmail(emailInput: String): AccountUser? {
+        val email = emailInput.trim().lowercase(Locale.ROOT)
+        return users.find(Filters.eq("email", email)).first()?.let(::userView)
+    }
+
+    fun hasCredentialAccount(userId: String): Boolean =
+        accounts.find(
+            Filters.and(
+                Filters.eq("userId", userId),
+                Filters.eq("providerId", "credential"),
+            ),
+        ).first() != null
+
+    fun markEmailVerified(userId: String): Boolean =
+        users.updateOne(
+            Filters.eq("_id", userId),
+            Updates.combine(
+                Updates.set("emailVerified", true),
+                Updates.set("updatedAt", Date.from(clock.instant())),
+            ),
+        ).matchedCount == 1L
+
+    fun resetPassword(userId: String, password: String) {
+        if (password.length !in 12..200) {
+            throw ApiException(400, "password_invalid", "Password must contain at least 12 characters.")
+        }
+        val now = Date.from(clock.instant())
+        val updated =
+            accounts.updateOne(
+                Filters.and(
+                    Filters.eq("userId", userId),
+                    Filters.eq("providerId", "credential"),
+                ),
+                Updates.combine(
+                    Updates.set("password", passwordEncoder.encode(password)),
+                    Updates.set("updatedAt", now),
+                ),
+            )
+        if (updated.matchedCount != 1L) {
+            throw ApiException(400, "password_reset_invalid", "The password reset link is invalid or expired.")
+        }
+        users.updateOne(
+            Filters.eq("_id", userId),
+            Updates.combine(
+                Updates.set("emailVerified", true),
+                Updates.set("updatedAt", now),
+            ),
+        )
+    }
 
     fun authenticateGoogle(subject: String, emailInput: String, nameInput: String, emailVerified: Boolean): AccountUser {
         if (!emailVerified) throw ApiException(403, "oauth_email_unverified", "Google account email is not verified.")
@@ -153,12 +211,20 @@ class AccountService(
                 Filters.and(Filters.eq("providerId", "google"), Filters.eq("accountId", subject)),
             ).first()
         if (linked != null) {
+            markEmailVerified(linked.getString("userId"))
             return find(linked.getString("userId"))
                 ?: throw ApiException(409, "oauth_account_invalid", "Linked account is unavailable.")
         }
         val existingUser = users.find(Filters.eq("email", email)).first()
         if (existingUser != null) {
             val now = Date.from(clock.instant())
+            users.updateOne(
+                Filters.eq("_id", existingUser.getString("_id")),
+                Updates.combine(
+                    Updates.set("emailVerified", true),
+                    Updates.set("updatedAt", now),
+                ),
+            )
             val linkedSuccessfully = runCatching {
                 accounts.insertOne(
                     Document("_id", UUID.randomUUID().toString())
@@ -178,7 +244,8 @@ class AccountService(
                     throw ApiException(409, "oauth_link_conflict", "Google account is already linked.")
                 }
             }
-            return userView(existingUser)
+            return find(existingUser.getString("_id"))
+                ?: throw ApiException(409, "oauth_account_invalid", "Linked account is unavailable.")
         }
         if (!email.matches(Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"))) {
             throw ApiException(403, "oauth_email_invalid", "Google account email is invalid.")
@@ -242,7 +309,7 @@ class AccountService(
                 )
             }
         }
-        return AccountUser(userId, name, email, username, householdId)
+        return AccountUser(userId, name, email, username, householdId, emailVerified = true)
     }
 
     fun canAccessHousehold(userId: String, householdId: String): Boolean =
@@ -281,6 +348,7 @@ class AccountService(
             email = user.getString("email").orEmpty(),
             username = user.getString("username") ?: user.getString("email").orEmpty(),
             householdId = membership.getString("householdId"),
+            emailVerified = user.getBoolean("emailVerified", false) == true,
         )
     }
 

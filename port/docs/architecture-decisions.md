@@ -30,7 +30,7 @@
   adapter, including S3-compatible endpoints and server-side encryption.
 - Deterministic text/Markdown extraction is the default. OpenRouter is an explicit opt-in
   adapter with a bounded input, total request timeout, JSON validation, and no content logs.
-- SMTP is the production email adapter. Local execution uses a capture adapter that logs
+- Cloudflare Email Service's HTTPS REST API is the production email adapter. Local execution uses a capture adapter that logs
   neither recipient nor message.
 - PDF export uses structured recipe, weekly-plan, shopping-list, and combined document models
   rendered with Apache PDFBox 3.0.8. The layout ports the original Node export's typography,

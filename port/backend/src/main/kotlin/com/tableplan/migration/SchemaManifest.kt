@@ -104,8 +104,9 @@ object SchemaManifest {
                 "verifications",
                 listOf(
                     index(Document("identifier", 1).append("value", 1), "verification_lookup"),
-                    index(Document("expiresAt", 1), "verification_expiry"),
+                    ttl("expiresAt", "verification_token_ttl"),
                 ),
+                obsoleteIndexes = setOf("verification_expiry"),
             ),
             CollectionSchema(
                 "households",

@@ -41,7 +41,7 @@ describe("appearance settings", () => {
       const path = String(input);
       if (path.endsWith("/api/auth/session")) {
         return Response.json({
-          user: { id: "user-1", name: "Test User", email: "test@example.com", username: "tester" },
+          user: { id: "user-1", name: "Test User", email: "test@example.com", username: "tester", emailVerified: true },
           householdId: "household-1",
         });
       }

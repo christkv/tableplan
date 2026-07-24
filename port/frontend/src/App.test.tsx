@@ -12,6 +12,9 @@ afterEach(() => {
 const sourcePageRoutes = [
   "/",
   "/sign-in",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
   "/auth/error",
   "/household/join",
   "/shared/shopping",
@@ -37,7 +40,7 @@ describe("frontend route parity", () => {
       const path = String(input);
       if (path.endsWith("/api/auth/session")) {
         return Response.json({
-          user: { id: "user-1", name: "Test User", email: "test@example.com", username: "tester" },
+          user: { id: "user-1", name: "Test User", email: "test@example.com", username: "tester", emailVerified: true },
           householdId: "household-1",
         });
       }

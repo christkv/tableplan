@@ -93,10 +93,24 @@ Edit at least:
   Configure all three together; leave all three commented to disable Google OAuth.
 - MongoDB URI and database
 - artifact-storage settings
-- extraction and SMTP settings when enabled
+- extraction settings when enabled
+- Cloudflare Email Service account/token and `tableplan.email.from-*` settings; these are required in production
+  for email confirmation and password reset
 
 The local `deploy/application.properties` file is ignored by Git. Never commit
 production credentials.
+
+When a release changes configuration compatibility, deploy the JAR and properties as one
+coordinated unit:
+
+```bash
+./scripts/deploy-application.sh --properties=deploy/application.properties
+```
+
+The script validates the Cloudflare email fields locally, uploads both artifacts, activates both
+before the service restart, and rolls both back if readiness fails. Do not run
+`deploy-properties.sh` first for an incompatible configuration migration because the currently
+active JAR may reject the new property model.
 
 Bootstrap all servers in the default inventory:
 
@@ -197,6 +211,38 @@ SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/tableplan/shared/application.propert
 ```
 
 The resolved location is included in the application's startup environment log.
+
+After a release that changes MongoDB indexes, reconcile them with the same external
+configuration used by systemd:
+
+```bash
+ssh -i ~/.ssh/id_ed25519_hetzner root@65.109.133.135 \
+  'sudo -u tableplan env \
+    SPRING_PROFILES_ACTIVE=prod \
+    SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/tableplan/shared/application.properties \
+    /usr/bin/java -jar /opt/tableplan/current/tableplan.jar \
+    sync-indexes --allow-production'
+```
+
+Email confirmation and password reset require Cloudflare Email Service in production. Password-reset tokens expire
+after one hour, confirmation tokens expire after 24 hours, and both are stored only as SHA-256
+digests. Confirming a password reset revokes every existing session for that user. The release
+that introduces required email confirmation also invalidates older browser sessions so an
+unconfirmed legacy session cannot bypass the new policy.
+
+At startup, verify that the environment report contains
+`TABLEPLAN_EMAIL_DELIVERY_MODE=cloudflare-rest`. A `providerMessageId` beginning with `local-` means the
+message was captured in the application log for local development and was not submitted to an
+email provider. With either Cloudflare credential configured, incomplete configuration stops
+startup instead of silently falling back to capture mode. Cloudflare delivery failures leave the delivery in `failed`
+with a sanitized error type so the job can be retried.
+
+The REST adapter uses Cloudflare's fixed HTTPS API endpoint on port 443 and never follows
+redirects, so the bearer token cannot be redirected to another host. Requests have a 5-second
+connection timeout and a configurable 15-second total timeout.
+Expired job leases and email deliveries left in `sending` for more than two minutes are reclaimed
+automatically after a process restart. Override the request timeout only when necessary with
+`TABLEPLAN_EMAIL_TIMEOUT_SECONDS`.
 
 ## Operating the service
 

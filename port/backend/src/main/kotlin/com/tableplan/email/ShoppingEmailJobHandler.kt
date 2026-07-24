@@ -14,11 +14,13 @@ class ShoppingEmailJobHandler(
     override fun handle(job: LeasedJob) {
         val deliveryId = job.payload.getString("deliveryId") ?: error("delivery_id_missing")
         runCatching { deliveries.send(deliveryId) }
-            .getOrElse { throw RetryableJobException("email_send_failed", it) }
+            .getOrElse { error ->
+                if (error is CloudflareEmailException && !error.retryable) throw error
+                throw RetryableJobException("email_send_failed", error)
+            }
     }
 
     companion object {
         const val TYPE = "shopping-email"
     }
 }
-

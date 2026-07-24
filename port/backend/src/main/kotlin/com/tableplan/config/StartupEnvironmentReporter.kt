@@ -1,5 +1,7 @@
 package com.tableplan.config
 
+import com.tableplan.email.CloudflareEmailSender
+import com.tableplan.email.EmailSender
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component
 class StartupEnvironmentReporter(
     private val environment: Environment,
     private val properties: TableplanProperties,
+    private val emailSender: EmailSender,
 ) : ApplicationRunner {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -82,10 +85,19 @@ class StartupEnvironmentReporter(
                         "spring.security.oauth2.client.registration.google.redirect-uri",
                     ),
                 ),
-                setting("SPRING_MAIL_HOST", environment.getProperty("SPRING_MAIL_HOST")),
-                setting("SPRING_MAIL_PORT", environment.getProperty("SPRING_MAIL_PORT")),
-                setting("SPRING_MAIL_USERNAME", environment.getProperty("SPRING_MAIL_USERNAME"), sensitive = true),
-                setting("SPRING_MAIL_PASSWORD", environment.getProperty("SPRING_MAIL_PASSWORD"), sensitive = true),
+                setting("TABLEPLAN_EMAIL_DELIVERY_MODE", emailDeliveryMode(emailSender)),
+                setting(
+                    "TABLEPLAN_EMAIL_CLOUDFLARE_ACCOUNT_ID",
+                    properties.email.cloudflareAccountId,
+                ),
+                setting(
+                    "TABLEPLAN_EMAIL_CLOUDFLARE_API_TOKEN",
+                    properties.email.cloudflareApiToken,
+                    sensitive = true,
+                ),
+                setting("TABLEPLAN_EMAIL_TIMEOUT_SECONDS", properties.email.timeoutSeconds),
+                setting("TABLEPLAN_EMAIL_FROM_ADDRESS", properties.email.fromAddress),
+                setting("TABLEPLAN_EMAIL_FROM_NAME", properties.email.fromName),
             )
 
         logger.info(
@@ -100,6 +112,9 @@ class StartupEnvironmentReporter(
         sensitive: Boolean = false,
     ) = name to displayStartupValue(value?.toString(), sensitive)
 }
+
+internal fun emailDeliveryMode(sender: EmailSender): String =
+    if (sender is CloudflareEmailSender) "cloudflare-rest" else "captured"
 
 internal fun displayStartupValue(
     value: String?,

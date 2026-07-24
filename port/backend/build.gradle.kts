@@ -21,7 +21,6 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.8")
     implementation(platform("software.amazon.awssdk:bom:2.46.8"))
     implementation("software.amazon.awssdk:s3")
-    implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("tools.jackson.dataformat:jackson-dataformat-yaml")
     implementation(kotlin("reflect"))

@@ -1,9 +1,15 @@
 package com.tableplan.config
 
+import com.tableplan.email.LoggingEmailSender
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 class StartupEnvironmentReporterTest {
+    @Test
+    fun `reports captured delivery when Cloudflare is not active`() {
+        assertEquals("captured", emailDeliveryMode(LoggingEmailSender()))
+    }
+
     @Test
     fun `shows no more than five characters of a sensitive value`() {
         assertEquals("abcde…", displayStartupValue("abcdefghijk", sensitive = true))

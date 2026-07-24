@@ -64,12 +64,13 @@ components:
       properties:
         user:
           type: object
-          required: [id, name, email, username]
+          required: [id, name, email, username, emailVerified]
           properties:
             id: { type: string }
             name: { type: string }
             email: { type: string, format: email }
             username: { type: string }
+            emailVerified: { type: boolean }
         householdId: { type: string }
     RecipeSummary:
       type: object
@@ -216,9 +217,70 @@ paths:
                 username: { type: string, minLength: 3, maxLength: 32 }
                 password: { type: string, minLength: 12, maxLength: 200, writeOnly: true }
       responses:
-        "200": { description: Registered session., content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
+        "200":
+          description: Account created; email confirmation is required before password sign-in.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [emailVerificationRequired, deliveryStatus, message]
+                properties:
+                  emailVerificationRequired: { const: true }
+                  deliveryStatus: { enum: [sent, failed, throttled] }
+                  message: { type: string }
         "400": { $ref: "#/components/responses/BadRequest" }
         "409": { description: Account conflict. }
+  /api/auth/email-verification/request:
+    post:
+      tags: [auth]
+      operationId: requestEmailVerification
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email, maxLength: 254 } } } } }
+      responses:
+        "202": { description: Generic confirmation-email response that does not disclose account state. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /api/auth/email-verification/confirm:
+    post:
+      tags: [auth]
+      operationId: confirmEmail
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string, minLength: 32, maxLength: 256, writeOnly: true } } } } }
+      responses:
+        "200": { description: Email address confirmed. }
+        "400": { description: Confirmation token is invalid or expired. }
+  /api/auth/password-reset/request:
+    post:
+      tags: [auth]
+      operationId: requestPasswordReset
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email, maxLength: 254 } } } } }
+      responses:
+        "202": { description: Generic reset response that does not disclose account existence. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /api/auth/password-reset/confirm:
+    post:
+      tags: [auth]
+      operationId: confirmPasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, minLength: 32, maxLength: 256, writeOnly: true }
+                password: { type: string, minLength: 12, maxLength: 200, writeOnly: true }
+      responses:
+        "200": { description: Password reset and all existing sessions revoked. }
+        "400": { description: Reset token is invalid, expired, or the password is invalid. }
   /api/auth/login:
     post:
       tags: [auth]

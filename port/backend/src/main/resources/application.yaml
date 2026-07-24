@@ -67,3 +67,9 @@ tableplan:
     openrouter-model: ${TABLEPLAN_OPENROUTER_MODEL:openai/gpt-4.1-mini}
     openrouter-base-url: ${TABLEPLAN_OPENROUTER_BASE_URL:https://openrouter.ai/api/v1/chat/completions}
     timeout-seconds: ${TABLEPLAN_EXTRACTION_TIMEOUT_SECONDS:45}
+  email:
+    cloudflare-account-id: ${TABLEPLAN_EMAIL_CLOUDFLARE_ACCOUNT_ID:${CLOUDFLARE_ACCOUNT_ID:}}
+    cloudflare-api-token: ${TABLEPLAN_EMAIL_CLOUDFLARE_API_TOKEN:}
+    timeout-seconds: ${TABLEPLAN_EMAIL_TIMEOUT_SECONDS:15}
+    from-address: ${TABLEPLAN_EMAIL_FROM_ADDRESS:}
+    from-name: ${TABLEPLAN_EMAIL_FROM_NAME:Table Rhythm Alpha}

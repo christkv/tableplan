@@ -17,6 +17,7 @@ data class TableplanProperties(
     @field:Valid val jobs: Jobs = Jobs(),
     @field:Valid val artifacts: Artifacts = Artifacts(),
     @field:Valid val extraction: Extraction = Extraction(),
+    @field:Valid val email: Email = Email(),
 ) {
     data class Auth(
         val sessionCookieSecure: Boolean = false,
@@ -57,5 +58,13 @@ data class TableplanProperties(
         val openrouterModel: String = "openai/gpt-4.1-mini",
         val openrouterBaseUrl: String = "https://openrouter.ai/api/v1/chat/completions",
         @field:Min(1) @field:Max(120) val timeoutSeconds: Long = 45,
+    )
+
+    data class Email(
+        val cloudflareAccountId: String = "",
+        val cloudflareApiToken: String = "",
+        @field:Min(1) @field:Max(60) val timeoutSeconds: Long = 15,
+        val fromAddress: String = "",
+        @field:NotBlank val fromName: String = "Table Rhythm Alpha",
     )
 }

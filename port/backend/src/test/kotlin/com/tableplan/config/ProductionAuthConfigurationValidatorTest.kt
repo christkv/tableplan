@@ -45,4 +45,30 @@ class ProductionAuthConfigurationValidatorTest {
             )
         }
     }
+
+    @Test
+    fun `requires Cloudflare REST email delivery in production`() {
+        validateProductionEmailConfiguration(
+            production = true,
+            cloudflareAccountId = "account-id",
+            cloudflareApiToken = "api-token",
+            fromAddress = "shopping@tablerhythm.com",
+        )
+        assertFailsWith<IllegalStateException> {
+            validateProductionEmailConfiguration(
+                production = true,
+                cloudflareAccountId = "account-id",
+                cloudflareApiToken = "",
+                fromAddress = "shopping@tablerhythm.com",
+            )
+        }
+        assertFailsWith<IllegalStateException> {
+            validateProductionEmailConfiguration(
+                production = true,
+                cloudflareAccountId = null,
+                cloudflareApiToken = "api-token",
+                fromAddress = "",
+            )
+        }
+    }
 }

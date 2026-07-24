@@ -9,7 +9,7 @@ Spring Boot JAR.
 
 The SPA owns the full captured page-route surface:
 
-- `/`, `/sign-in`, and `/auth/error`
+- `/`, `/sign-in`, `/verify-email`, `/forgot-password`, `/reset-password`, and `/auth/error`
 - `/household/join`
 - `/recipes`, `/recipes/new`, `/recipes/import/:ingestionId`,
   `/recipes/:recipeId`, and `/recipes/:recipeId/edit`
@@ -17,7 +17,7 @@ The SPA owns the full captured page-route surface:
 - `/shared/shopping` and `/shared/shopping/:shareId`
 
 `/login` and `/register` are compatibility aliases. `src/App.test.tsx` locks the captured
-15-route manifest so a route cannot disappear unnoticed.
+18-route manifest so a route cannot disappear unnoticed.
 
 Page modules are route-split with `React.lazy`; the production build emits no source maps.
 The repository-level performance gate caps entry and total JavaScript gzip size and verifies

@@ -31,6 +31,27 @@ data class LoginRequest(
     @field:NotBlank @field:Size(max = 200) val password: String,
 )
 
+data class EmailActionRequest(
+    @field:NotBlank @field:Email @field:Size(max = 254) val email: String,
+)
+
+data class TokenActionRequest(
+    @field:NotBlank @field:Size(min = 32, max = 256) val token: String,
+)
+
+data class PasswordResetConfirmRequest(
+    @field:NotBlank @field:Size(min = 32, max = 256) val token: String,
+    @field:Size(min = 12, max = 200) val password: String,
+)
+
+data class RegistrationResponse(
+    val emailVerificationRequired: Boolean = true,
+    val deliveryStatus: String,
+    val message: String,
+)
+
+data class AuthActionResponse(val message: String)
+
 data class SessionResponse(
     val user: UserResponse,
     val householdId: String,
@@ -43,12 +64,14 @@ data class UserResponse(
     val name: String,
     val email: String,
     val username: String,
+    val emailVerified: Boolean,
 )
 
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
     private val accounts: AccountService,
+    private val authEmails: AuthEmailService,
     private val sessions: SessionRepository,
     private val sessionCookies: SessionCookieFactory,
 ) {
@@ -58,13 +81,54 @@ class AuthController(
     @PostMapping("/register")
     fun register(
         @Valid @RequestBody body: RegisterRequest,
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-    ): SessionResponse {
+    ): RegistrationResponse {
         val user = accounts.register(body.name, body.email, body.username, body.password)
-        val session = sessions.create(user.id, user.householdId)
-        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookies.create(session, request).toString())
-        return user.toSessionResponse()
+        val delivery = authEmails.sendVerification(user)
+        return RegistrationResponse(
+            deliveryStatus = delivery.name.lowercase(),
+            message =
+                if (delivery == AuthEmailDeliveryStatus.FAILED) {
+                    "Your account was created, but the confirmation email could not be sent. Request a new link."
+                } else {
+                    "Check your email to confirm your account before signing in."
+                },
+        )
+    }
+
+    @PostMapping("/email-verification/request")
+    fun requestEmailVerification(
+        @Valid @RequestBody body: EmailActionRequest,
+    ): ResponseEntity<AuthActionResponse> {
+        authEmails.requestVerification(body.email)
+        return ResponseEntity.accepted().body(
+            AuthActionResponse("If the account needs confirmation, a new email has been sent."),
+        )
+    }
+
+    @PostMapping("/email-verification/confirm")
+    fun confirmEmail(
+        @Valid @RequestBody body: TokenActionRequest,
+    ): AuthActionResponse {
+        authEmails.confirmEmail(body.token)
+        return AuthActionResponse("Your email address has been confirmed. You can now sign in.")
+    }
+
+    @PostMapping("/password-reset/request")
+    fun requestPasswordReset(
+        @Valid @RequestBody body: EmailActionRequest,
+    ): ResponseEntity<AuthActionResponse> {
+        authEmails.requestPasswordReset(body.email)
+        return ResponseEntity.accepted().body(
+            AuthActionResponse("If an eligible account exists, a password reset email has been sent."),
+        )
+    }
+
+    @PostMapping("/password-reset/confirm")
+    fun confirmPasswordReset(
+        @Valid @RequestBody body: PasswordResetConfirmRequest,
+    ): AuthActionResponse {
+        authEmails.resetPassword(body.token, body.password)
+        return AuthActionResponse("Your password has been reset. Sign in with the new password.")
     }
 
     @PostMapping("/login")
@@ -117,5 +181,5 @@ class AuthController(
     }
 
     private fun AccountUser.toSessionResponse() =
-        SessionResponse(UserResponse(id, name, email, username), householdId)
+        SessionResponse(UserResponse(id, name, email, username, emailVerified), householdId)
 }

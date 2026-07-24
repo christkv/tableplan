@@ -9,6 +9,7 @@ import com.mongodb.client.model.ReturnDocument
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
 import org.bson.Document
+import org.bson.conversions.Bson
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Duration
@@ -84,14 +85,7 @@ class JobService(
         val now = clock.instant()
         val document =
             jobs.findOneAndUpdate(
-                Filters.and(
-                    Filters.`in`("status", listOf("queued", "retry")),
-                    Filters.lte("availableAt", Date.from(now)),
-                    Filters.or(
-                        Filters.eq("leaseExpiresAt", null),
-                        Filters.lte("leaseExpiresAt", Date.from(now)),
-                    ),
-                ),
+                jobClaimFilter(now),
                 Updates.combine(
                     Updates.set("status", "running"),
                     Updates.set("leaseOwner", worker),
@@ -185,3 +179,19 @@ class JobService(
             Filters.eq("leaseOwner", job.leaseOwner),
         )
 }
+
+internal fun jobClaimFilter(now: Instant): Bson =
+    Filters.or(
+        Filters.and(
+            Filters.`in`("status", listOf("queued", "retry")),
+            Filters.lte("availableAt", Date.from(now)),
+            Filters.or(
+                Filters.eq("leaseExpiresAt", null),
+                Filters.lte("leaseExpiresAt", Date.from(now)),
+            ),
+        ),
+        Filters.and(
+            Filters.eq("status", "running"),
+            Filters.lte("leaseExpiresAt", Date.from(now)),
+        ),
+    )

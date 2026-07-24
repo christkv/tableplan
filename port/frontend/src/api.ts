@@ -70,7 +70,7 @@ export interface RecipeIngestion {
 }
 
 export interface Session {
-  user: { id: string; name: string; email: string; username: string };
+  user: { id: string; name: string; email: string; username: string; emailVerified: boolean };
   householdId: string;
 }
 

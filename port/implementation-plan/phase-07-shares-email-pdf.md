@@ -15,7 +15,7 @@ exports with secure token handling, durable retries, and verified document outpu
 
 ## Mandatory decisions before implementation
 
-- [ ] Select email provider/SMTP adapter and document sandbox/test credentials.
+- [x] Use the Cloudflare Email Service REST API over HTTPS with a dedicated sending token.
 - [ ] Decide how a raw share/invitation token needed by a retry is represented: avoid
       persistence where possible; otherwise use a purpose-bound encrypted short-lived secret.
 - [ ] Select pinned Chromium in the runtime image or a dedicated PDF service.
@@ -140,4 +140,3 @@ rules; and every PDF variant passes visual, security, timeout, and header checks
 
 Provide public/API/session principal composition, durable outbound work, export endpoints,
 provider metrics, and operational failure procedures.
-

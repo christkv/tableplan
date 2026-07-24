@@ -46,8 +46,11 @@ tableplan.extraction.provider=deterministic
 # tableplan.extraction.openrouter-api-key=
 # tableplan.extraction.openrouter-model=openai/gpt-4.1-mini
 
-# Optional SMTP delivery:
-# spring.mail.host=
-# spring.mail.port=587
-# spring.mail.username=
-# spring.mail.password=
+# Cloudflare Email Service REST API over HTTPS:
+# Use a dedicated token with Email Sending: Edit permission.
+# tableplan.email.cloudflare-account-id=
+# tableplan.email.cloudflare-api-token=
+# tableplan.email.timeout-seconds=15
+# The address must use a domain onboarded under Cloudflare Email Service > Email Sending.
+# tableplan.email.from-address=shopping@mail.tableplan.example.com
+# tableplan.email.from-name=Table Rhythm Alpha

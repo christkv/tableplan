@@ -19,7 +19,7 @@ class OpenApiContractTest {
             paths.values
                 .flatMap { (it as Map<*, *>).filterKeys { key -> key in methods }.values }
                 .map { (it as Map<*, *>)["operationId"] as? String }
-        assertEquals(64, operationIds.size)
+        assertEquals(68, operationIds.size)
         assertEquals(operationIds.size, operationIds.filterNotNull().distinct().size)
     }
 }

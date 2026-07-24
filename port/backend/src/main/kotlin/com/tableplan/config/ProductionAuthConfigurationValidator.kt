@@ -28,6 +28,30 @@ class ProductionAuthConfigurationValidator(
                     "spring.security.oauth2.client.registration.google.redirect-uri",
                 ),
         )
+        validateProductionEmailConfiguration(
+            production = environment.activeProfiles.contains("prod"),
+            cloudflareAccountId = properties.email.cloudflareAccountId,
+            cloudflareApiToken = properties.email.cloudflareApiToken,
+            fromAddress = properties.email.fromAddress,
+        )
+    }
+}
+
+internal fun validateProductionEmailConfiguration(
+    production: Boolean,
+    cloudflareAccountId: String?,
+    cloudflareApiToken: String?,
+    fromAddress: String?,
+) {
+    if (!production) return
+    check(!cloudflareAccountId.isNullOrBlank()) {
+        "TABLEPLAN_EMAIL_CLOUDFLARE_ACCOUNT_ID must be configured in prod because email confirmation is required."
+    }
+    check(!cloudflareApiToken.isNullOrBlank()) {
+        "TABLEPLAN_EMAIL_CLOUDFLARE_API_TOKEN must be configured in prod because email confirmation is required."
+    }
+    check(!fromAddress.isNullOrBlank()) {
+        "TABLEPLAN_EMAIL_FROM_ADDRESS must be configured in prod."
     }
 }
 

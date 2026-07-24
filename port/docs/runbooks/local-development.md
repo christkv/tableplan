@@ -22,6 +22,11 @@ java -jar backend/build/libs/tableplan.jar migrate
 JOBS_ENABLED=true java -jar backend/build/libs/tableplan.jar serve
 ```
 
+When Cloudflare Email Service credentials are not configured, confirmation and password-reset emails are captured in the
+application log. Their single-use local links are printed so the flows can be exercised during
+development. Production refuses to start without a Cloudflare account ID, dedicated Email
+Sending API token, and sender address.
+
 For split hot reload, use one browser-visible origin even though two processes run:
 
 ```dotenv

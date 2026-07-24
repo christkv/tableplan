@@ -137,7 +137,9 @@ code { padding: 2px 5px; border-radius: 4px; background: var(--code-bg); font-si
 .app-frame { min-height: 100vh; display: grid; grid-template-columns: 244px minmax(0, 1fr); }
 .sidebar { position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--border); background: var(--sidebar); padding: 24px 15px 17px; display: flex; flex-direction: column; z-index: 10; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 7px 25px; font-weight: 760; font-size: 18px; }
+.brand-lockup { min-width: 0; display: inline-flex; align-items: center; gap: 7px; }
 .brand-name { font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.product-stage { padding: 3px 6px 2px; border: 1px solid var(--chip-border); border-radius: 999px; color: var(--accent-strong); background: var(--accent-soft); font-size: 8px; line-height: 1; font-weight: 850; letter-spacing: 0.1em; text-transform: uppercase; }
 .brand-mark { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 11px; color: #fffaf2; background: linear-gradient(145deg, #c96a45, var(--accent-fill)); box-shadow: 0 7px 16px rgba(109, 47, 29, 0.2); }
 .brand-mark svg { width: 24px; height: 24px; overflow: visible; }
 .brand-mark path { fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.35; opacity: 0.68; }
@@ -510,6 +512,7 @@ code { padding: 2px 5px; border-radius: 4px; background: var(--code-bg); font-si
 .auth-brand-panel > * { position: relative; z-index: 1; }
 .auth-brand { padding-left: 0; color: white; }
 .auth-brand .brand-name { font-size: 22px; }
+.auth-brand .product-stage { border-color: rgba(255, 226, 210, 0.38); color: #ffe2d2; background: rgba(185, 82, 50, 0.22); }
 .auth-brand-panel > div { max-width: 560px; }
 .auth-brand-panel h1 { margin-bottom: 22px; color: #fffaf2; font-size: clamp(48px, 5vw, 68px); line-height: 0.98; }
 .auth-brand-panel p:not(.eyebrow) { max-width: 500px; color: #d7ddcf; font-size: 16px; line-height: 1.7; }
@@ -528,6 +531,14 @@ code { padding: 2px 5px; border-radius: 4px; background: var(--code-bg); font-si
 .auth-form .input { min-height: 46px; }
 .auth-form .button { margin-top: 3px; }
 .form-error { margin: 0; padding: 10px 12px; border: 1px solid var(--danger-border); border-radius: 5px; color: var(--danger-text); background: var(--danger-bg); font-size: 12px; }
+.form-success { margin: 0 0 16px; padding: 11px 13px; border: 1px solid var(--success-border); border-radius: 6px; color: var(--text); background: var(--success-bg); font-size: 12px; line-height: 1.5; }
+.auth-help-link { width: fit-content; color: var(--accent-strong); font-size: 12px; font-weight: 700; }
+.auth-action-page { min-height: 100vh; display: grid; place-items: center; padding: 28px; background: radial-gradient(circle at 15% 10%, var(--accent-soft), transparent 34%), var(--bg); }
+.auth-action-card { width: min(480px, 100%); padding: 34px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.auth-action-brand { padding: 0 0 32px; }
+.auth-action-card h1 { margin-bottom: 12px; font-size: 36px; }
+.auth-action-card > p:not(.eyebrow, .form-error, .form-success) { color: var(--muted); line-height: 1.6; }
+.auth-action-card > .button, .auth-action-card > .auth-help-link { margin-top: 16px; }
 .auth-mode { width: 100%; margin-top: 20px; border: 0; color: var(--accent); background: transparent; font-size: 12px; font-weight: 700; cursor: pointer; }
 .spin { animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

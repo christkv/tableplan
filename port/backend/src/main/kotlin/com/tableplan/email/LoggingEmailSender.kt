@@ -8,7 +8,13 @@ class LoggingEmailSender : EmailSender {
 
     override fun send(recipient: String, subject: String, html: String, text: String): String {
         val id = "local-${UUID.randomUUID()}"
-        logger.info("email.captured providerMessageId={} template=shopping-share", id)
+        logger.info(
+            "email.captured providerMessageId={} recipient={} subject={}\n{}",
+            id,
+            recipient,
+            subject,
+            text,
+        )
         return id
     }
 }
