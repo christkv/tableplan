@@ -1,0 +1,52 @@
+# Copy this file to deploy/application.properties. That file is gitignored.
+# Deploy it independently with:
+#   ./scripts/deploy-properties.sh deploy/application.properties
+
+spring.profiles.active=prod
+server.address=127.0.0.1
+server.port=9090
+
+# Public HTTPS origin presented by the reverse proxy.
+tableplan.public-origin=https://tableplan.example.com
+tableplan.delivery-secret=
+tableplan.auth.session-cookie-secure=true
+spring.security.oauth2.client.registration.google.redirect-uri=https://tableplan.example.com/login/oauth2/code/google
+spring.security.oauth2.client.registration.google.client-id=
+spring.security.oauth2.client.registration.google.client-secret=
+
+tableplan.mongo.uri=mongodb+srv://USER:PASSWORD@HOST/?retryWrites=true&w=majority
+tableplan.mongo.database=application
+tableplan.mongo.max-pool-size=20
+tableplan.mongo.min-pool-size=0
+
+tableplan.jobs.enabled=true
+tableplan.jobs.concurrency=2
+
+# Local files:
+tableplan.artifacts.mode=local
+tableplan.artifacts.local-directory=/opt/tableplan/shared/artifacts
+tableplan.artifacts.max-megabytes=10
+
+# Cloudflare R2 or another S3-compatible service:
+# tableplan.artifacts.mode=s3
+# tableplan.artifacts.bucket=tableplan-production
+# tableplan.artifacts.region=auto
+# tableplan.artifacts.endpoint=https://ACCOUNT_ID.r2.cloudflarestorage.com
+# tableplan.artifacts.path-style-access=true
+# Cloudflare R2 requires both of these values to be false.
+# tableplan.artifacts.chunked-encoding-enabled=false
+# tableplan.artifacts.send-server-side-encryption-header=false
+# tableplan.artifacts.access-key-id=
+# tableplan.artifacts.secret-access-key=
+
+# Optional AI extraction:
+tableplan.extraction.provider=deterministic
+# tableplan.extraction.provider=openrouter
+# tableplan.extraction.openrouter-api-key=
+# tableplan.extraction.openrouter-model=openai/gpt-4.1-mini
+
+# Optional SMTP delivery:
+# spring.mail.host=
+# spring.mail.port=587
+# spring.mail.username=
+# spring.mail.password=

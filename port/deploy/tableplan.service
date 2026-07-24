@@ -1,0 +1,25 @@
+[Unit]
+Description=Tableplan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tableplan
+Group=tableplan
+WorkingDirectory=/opt/tableplan/shared
+Environment=SPRING_PROFILES_ACTIVE=prod
+ExecStart=/usr/bin/java -jar /opt/tableplan/current/tableplan.jar serve --spring.config.additional-location=file:/opt/tableplan/shared/application.properties
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tableplan/shared
+
+[Install]
+WantedBy=multi-user.target

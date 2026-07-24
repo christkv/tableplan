@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Tableplan API
+  title: Table Rhythm API
   version: 1.0.0-spring
-  description: Checked-in contract for the Spring Boot Tableplan runtime.
+  description: Checked-in contract for the Spring Boot Table Rhythm runtime.
 servers:
   - url: /
 security:
@@ -23,7 +23,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: Tableplan API key with endpoint-specific scopes.
+      description: Table Rhythm API key with endpoint-specific scopes.
     sessionCookie:
       type: apiKey
       in: cookie

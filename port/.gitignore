@@ -21,6 +21,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+/deploy/application.properties
 .envrc
 .direnv/
 *.jks

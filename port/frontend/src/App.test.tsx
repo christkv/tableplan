@@ -56,7 +56,7 @@ describe("frontend route parity", () => {
 
     render(<SessionProvider><MemoryRouter initialEntries={["/recipes"]}><App /></MemoryRouter></SessionProvider>);
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in to Tableplan" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in to Table Rhythm" })).toBeTruthy());
   });
 
   it("renders the invitation error state without a credential", async () => {

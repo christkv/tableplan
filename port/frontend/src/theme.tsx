@@ -43,7 +43,7 @@ export function applyAppearance(appearance: Appearance): ResolvedTheme {
     document.documentElement.dataset.theme = resolved;
     document.documentElement.style.colorScheme = resolved;
     document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-      ?.setAttribute("content", resolved === "dark" ? "#101612" : "#173f35");
+      ?.setAttribute("content", resolved === "dark" ? "#1b1814" : "#b95232");
   }
   return resolved;
 }

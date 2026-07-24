@@ -1,4 +1,8 @@
-# Tableplan Spring Boot Port
+# Table Rhythm
+
+Table Rhythm brings household recipes, weekly meal planning, and one useful shopping list together.
+
+The codebase retains its original `tableplan` package, artifact, and environment-variable identifiers for deployment compatibility.
 
 The replacement runtime is implemented in Kotlin/Spring Boot with an embedded React/Vite
 SPA, direct MongoDB persistence, Mongo-leased jobs, S3-compatible artifacts, SMTP delivery,
@@ -30,6 +34,25 @@ java -jar backend/build/libs/tableplan.jar replay-job --id=JOB_ID
 ```
 
 The database named `application` requires `--allow-production` for operator writes.
+
+## Remote deployment
+
+The SSH/SCP deployment keeps immutable JAR releases under `/opt/tableplan/releases` and
+server-local configuration at `/opt/tableplan/shared/application.properties`. The configuration
+file is uploaded separately and is never packaged into the JAR.
+
+```bash
+cp deploy/application.properties.example deploy/application.properties
+# Edit deploy/application.properties; it is ignored by Git.
+
+./scripts/bootstrap-remote.sh
+./scripts/deploy-properties.sh deploy/application.properties
+./scripts/deploy-application.sh
+```
+
+The initial server inventory is `deploy/servers.conf`. Add another pipe-separated row to deploy
+sequentially to more servers. See the [deployment runbook](docs/runbooks/deployment.md) for
+configuration precedence, rollback behavior, and production proxy requirements.
 
 ## Repository map
 

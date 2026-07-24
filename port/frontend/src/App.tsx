@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
+import { BrandMark, PRODUCT_NAME } from "./components/Brand";
 import { ProtectedLayout } from "./components/Layout";
 
 const SignInPage = lazy(() => import("./pages/AuthPages").then((module) => ({ default: module.SignInPage })));
@@ -37,7 +38,7 @@ export const FRONTEND_PAGE_ROUTES = [
 
 export function App() {
   return (
-    <Suspense fallback={<main className="shared-loading"><div><span className="brand-mark">T</span><p>Loading Tableplan…</p></div></main>}><Routes>
+    <Suspense fallback={<main className="shared-loading"><div><BrandMark /><p>Loading {PRODUCT_NAME}…</p></div></main>}><Routes>
       <Route path="/" element={<Navigate replace to="/recipes" />} />
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/login" element={<SignInPage />} />
@@ -57,7 +58,7 @@ export function App() {
         <Route path="/shopping" element={<ShoppingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
-      <Route path="*" element={<main className="error-page"><div><p className="eyebrow">Tableplan</p><h1>Page not found</h1><a href="/recipes">Return to recipes</a></div></main>} />
+      <Route path="*" element={<main className="error-page"><div><BrandMark /><p className="eyebrow">{PRODUCT_NAME}</p><h1>That page is off the menu.</h1><p>The page you were looking for could not be found.</p><a href="/recipes">Return to recipes</a></div></main>} />
     </Routes></Suspense>
   );
 }

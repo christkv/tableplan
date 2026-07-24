@@ -42,9 +42,21 @@ class StartupEnvironmentReporter(
                 setting("TABLEPLAN_ARTIFACT_REGION", properties.artifacts.region),
                 setting("TABLEPLAN_ARTIFACT_ENDPOINT", properties.artifacts.endpoint),
                 setting("TABLEPLAN_ARTIFACT_PATH_STYLE", properties.artifacts.pathStyleAccess),
-                setting("AWS_ACCESS_KEY_ID", environment.getProperty("AWS_ACCESS_KEY_ID"), sensitive = true),
-                setting("AWS_SECRET_ACCESS_KEY", environment.getProperty("AWS_SECRET_ACCESS_KEY"), sensitive = true),
-                setting("AWS_SESSION_TOKEN", environment.getProperty("AWS_SESSION_TOKEN"), sensitive = true),
+                setting(
+                    "TABLEPLAN_ARTIFACT_CHUNKED_ENCODING_ENABLED",
+                    properties.artifacts.chunkedEncodingEnabled,
+                ),
+                setting(
+                    "TABLEPLAN_ARTIFACT_SEND_SSE_HEADER",
+                    properties.artifacts.sendServerSideEncryptionHeader,
+                ),
+                setting("TABLEPLAN_ARTIFACT_ACCESS_KEY_ID", properties.artifacts.accessKeyId, sensitive = true),
+                setting(
+                    "TABLEPLAN_ARTIFACT_SECRET_ACCESS_KEY",
+                    properties.artifacts.secretAccessKey,
+                    sensitive = true,
+                ),
+                setting("TABLEPLAN_ARTIFACT_SESSION_TOKEN", properties.artifacts.sessionToken, sensitive = true),
                 setting("TABLEPLAN_EXTRACTION_PROVIDER", properties.extraction.provider),
                 setting("OPENROUTER_API_KEY", properties.extraction.openrouterApiKey, sensitive = true),
                 setting("TABLEPLAN_OPENROUTER_MODEL", properties.extraction.openrouterModel),
@@ -73,7 +85,7 @@ class StartupEnvironmentReporter(
             )
 
         logger.info(
-            "Tableplan startup environment:\n{}",
+            "Table Rhythm startup environment:\n{}",
             settings.joinToString(separator = "\n") { "  ${it.first}=${it.second}" },
         )
     }

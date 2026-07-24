@@ -1,8 +1,9 @@
-import { ChefHat, Globe, LoaderCircle, LogOut, Users } from "lucide-react";
+import { Globe, LoaderCircle, LogOut, Users } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { errorMessage, Invitation, json, request, Session } from "../api";
 import { Button, Input } from "../components/ui";
+import { BrandMark, BrandName, PRODUCT_NAME } from "../components/Brand";
 import { safeReturnTo } from "../lib/domain";
 import { useSession } from "../session";
 
@@ -44,13 +45,13 @@ export function SignInPage({ initialMode = "sign-in" }: { initialMode?: "sign-in
   }
   return <main className="auth-page">
     <section className="auth-brand-panel">
-      <Link to="/sign-in" className="brand auth-brand"><span className="brand-mark"><ChefHat size={20} /></span><span>Tableplan</span></Link>
-      <div><p className="eyebrow">Dinner, decided</p><h1>Make the week easier for everyone at the table.</h1><p>Save family favorites, scale every recipe, and turn the plan into one useful shopping list.</p></div>
-      <small>Private household planning with clear quantities.</small>
+      <Link to="/sign-in" className="brand auth-brand"><BrandMark /><BrandName /></Link>
+      <div className="auth-brand-copy"><p className="eyebrow">Your week, in rhythm</p><h1>Make the week easier for everyone at the table.</h1><p>Keep the recipes you love, shape a plan that fits, and turn it into one useful shopping list.</p></div>
+      <small>Plan the week · Shop once · Eat together</small>
     </section>
     <section className="auth-form-panel"><div className="auth-form-wrap">
       <p className="eyebrow">{mode === "sign-in" ? "Welcome back" : "Create your household"}</p>
-      <h2>{mode === "sign-in" ? "Sign in to Tableplan" : "Start planning meals"}</h2>
+      <h2>{mode === "sign-in" ? `Sign in to ${PRODUCT_NAME}` : "Start your weekly rhythm"}</h2>
       <p>{mode === "sign-in" ? "Use your email, username, or Google account." : "Your first account becomes the household owner."}</p>
       <a className="button button-secondary button-default google-button" href={googleAuthorizationUrl}><Globe size={18} /> Continue with Google</a>
       <div className="auth-divider"><span>or</span></div>
@@ -85,7 +86,7 @@ export function AuthErrorPage() {
   const code = (params.get("error") ?? params.get("code"))?.match(/^[A-Za-z0-9_-]{1,128}$/)?.[0] ?? "unknown_error";
   const requestId = params.get("request_id")?.match(/^[A-Za-z0-9_-]{1,128}$/)?.[0] ?? "not-available";
   const [title, detail] = authMessages[code] ?? ["Authentication failed", "The sign-in request could not be completed. Return to sign in and try again."];
-  return <main className="error-page"><div><p className="eyebrow">Tableplan authentication</p><h1>{title}</h1><p>{detail}</p><p className="error-reference"><strong>Error:</strong> {code}<br /><strong>Reference:</strong> {requestId}</p><Link to="/sign-in">Return to sign in</Link></div></main>;
+  return <main className="error-page"><div><BrandMark /><p className="eyebrow">{PRODUCT_NAME} authentication</p><h1>{title}</h1><p>{detail}</p><p className="error-reference"><strong>Error:</strong> {code}<br /><strong>Reference:</strong> {requestId}</p><Link to="/sign-in">Return to sign in</Link></div></main>;
 }
 
 export function HouseholdJoinPage() {
@@ -139,7 +140,7 @@ export function HouseholdJoinPage() {
   if (!invitation) return <main className="shared-loading"><div><span className="brand-mark"><Users size={20} /></span><h1>Invitation unavailable</h1><p>{error || "This link is incomplete, expired, or already used."}</p><Link className="button button-secondary button-default" to="/sign-in">Go to sign in</Link></div></main>;
   const matching = session?.user.email.toLowerCase() === invitation.email.toLowerCase();
   return <main className="invite-page">
-    <header className="invite-brand"><Link to="/sign-in" className="brand"><span className="brand-mark"><ChefHat size={20} /></span><span>Tableplan</span></Link></header>
+    <header className="invite-brand"><Link to="/sign-in" className="brand"><BrandMark /><BrandName /></Link></header>
     <section className="invite-panel"><p className="eyebrow">Household invitation</p><h1>Join {invitation.householdName}</h1><p>You were invited as <strong>{invitation.role}</strong> using <strong>{invitation.email}</strong>.</p>
       <dl className="invite-details"><div><dt>Access</dt><dd>{invitation.role}</dd></div><div><dt>Expires</dt><dd>{new Date(invitation.expiresAt).toLocaleDateString()}</dd></div></dl>
       {session && !matching ? <div className="invite-state"><p>You are signed in as <strong>{session.user.email}</strong>. This invitation belongs to another account.</p><Button variant="secondary" onClick={signOut}><LogOut size={16} /> Sign out</Button></div>

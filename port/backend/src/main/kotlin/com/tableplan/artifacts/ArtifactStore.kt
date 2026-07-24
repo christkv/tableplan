@@ -3,6 +3,9 @@ package com.tableplan.artifacts
 import com.tableplan.config.TableplanProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -55,12 +58,37 @@ class ArtifactStoreConfiguration {
                         .serviceConfiguration(
                             S3Configuration.builder()
                                 .pathStyleAccessEnabled(configuration.pathStyleAccess)
+                                .chunkedEncodingEnabled(configuration.chunkedEncodingEnabled)
                                 .build(),
                         )
                 if (configuration.endpoint.isNotBlank()) {
                     builder.endpointOverride(URI.create(configuration.endpoint))
                 }
-                S3ArtifactStore(builder.build(), configuration.bucket, maximumBytes)
+                if (configuration.accessKeyId.isNotBlank() || configuration.secretAccessKey.isNotBlank()) {
+                    require(configuration.accessKeyId.isNotBlank() && configuration.secretAccessKey.isNotBlank()) {
+                        "Both tableplan.artifacts.access-key-id and secret-access-key must be configured together"
+                    }
+                    val credentials =
+                        if (configuration.sessionToken.isBlank()) {
+                            AwsBasicCredentials.create(
+                                configuration.accessKeyId,
+                                configuration.secretAccessKey,
+                            )
+                        } else {
+                            AwsSessionCredentials.create(
+                                configuration.accessKeyId,
+                                configuration.secretAccessKey,
+                                configuration.sessionToken,
+                            )
+                        }
+                    builder.credentialsProvider(StaticCredentialsProvider.create(credentials))
+                }
+                S3ArtifactStore(
+                    builder.build(),
+                    configuration.bucket,
+                    maximumBytes,
+                    configuration.sendServerSideEncryptionHeader,
+                )
             }
             else -> throw IllegalArgumentException(
                 "Unsupported tableplan.artifacts.mode '${configuration.mode}'; expected local or s3",
@@ -140,18 +168,24 @@ class S3ArtifactStore(
     private val client: S3Client,
     private val bucket: String,
     private val maximumBytes: Long,
+    private val sendServerSideEncryptionHeader: Boolean = true,
 ) : ArtifactStore {
     override fun put(key: String, bytes: ByteArray) {
         requireKey(key)
         requireWithinLimit(bytes.size.toLong())
-        client.putObject(
+        val request =
             PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
-                .serverSideEncryption(ServerSideEncryption.AES256)
-                .build(),
-            RequestBody.fromBytes(bytes),
-        )
+                .let { builder ->
+                    if (sendServerSideEncryptionHeader) {
+                        builder.serverSideEncryption(ServerSideEncryption.AES256)
+                    } else {
+                        builder
+                    }
+                }
+                .build()
+        client.putObject(request, RequestBody.fromBytes(bytes))
     }
 
     override fun get(key: String): ByteArray {

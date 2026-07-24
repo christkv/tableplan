@@ -18,7 +18,7 @@ import kotlin.system.exitProcess
 class TableplanApplication
 
 fun main(args: Array<String>) {
-    println("Tableplan working directory: ${Path.of("").toAbsolutePath().normalize()}")
+    println("Table Rhythm working directory: ${Path.of("").toAbsolutePath().normalize()}")
     DotenvLoader.load()
     val command = args.firstOrNull()
     if (command == null || command == "serve" || command.startsWith("--")) {

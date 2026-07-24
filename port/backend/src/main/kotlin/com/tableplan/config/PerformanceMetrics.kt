@@ -19,7 +19,7 @@ class PerformanceMetrics(
             sample.stop(
                 timers.computeIfAbsent(operation) {
                     Timer.builder("tableplan.operation.duration")
-                        .description("Duration of performance-sensitive Tableplan operations")
+                        .description("Duration of performance-sensitive Table Rhythm operations")
                         .tag("operation", operation)
                         .publishPercentileHistogram()
                         .register(registry)

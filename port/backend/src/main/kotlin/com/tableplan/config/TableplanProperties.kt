@@ -44,6 +44,11 @@ data class TableplanProperties(
         val region: String = "auto",
         val endpoint: String = "",
         val pathStyleAccess: Boolean = false,
+        val chunkedEncodingEnabled: Boolean = true,
+        val sendServerSideEncryptionHeader: Boolean = true,
+        val accessKeyId: String = "",
+        val secretAccessKey: String = "",
+        val sessionToken: String = "",
     )
 
     data class Extraction(

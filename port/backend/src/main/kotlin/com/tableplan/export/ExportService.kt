@@ -358,7 +358,7 @@ class ExportService(
     }
 
     private fun safeFilename(value: String) =
-        value.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(80).ifBlank { "tableplan-export" }
+        value.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(80).ifBlank { "table-rhythm-export" }
 
     private companion object {
         val DAY_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.ENGLISH)

@@ -15,6 +15,7 @@ import {
   PublicShoppingItemUpdate,
 } from "../api";
 import { Button, Select } from "../components/ui";
+import { BrandMark, BrandName } from "../components/Brand";
 import { quantityText } from "../lib/domain";
 
 interface EmailDelivery {
@@ -174,5 +175,5 @@ export function SharedShoppingPage() {
   if (error) return <main className="shared-loading"><div><span className="brand-mark"><ListChecks size={20} /></span><h1>Checklist unavailable</h1><p>{error}</p></div></main>;
   if (!list) return <main className="shared-loading"><div><LoaderCircle className="spin" /><h1>Loading checklist</h1></div></main>;
   const remaining = list.items.filter((item) => !item.checked).length;
-  return <main className="shared-page"><header className="shared-header"><div className="shared-brand"><span className="brand-mark"><ListChecks size={19} /></span><strong>Tableplan</strong></div><button className="shared-exit" onClick={logout}><LogOut size={18} /></button></header><section className="shared-summary"><p className="eyebrow">Store checklist</p><h1>{list.name}</h1><div><strong>{remaining}</strong> left <span>of {list.items.length}</span></div></section><section className="shared-list">{list.items.map((item) => <div className={`shared-item${item.checked ? " checked" : ""}`} key={item.id}><button className="shared-check" onClick={() => toggle(item.id, !item.checked)} disabled={pending === item.id}>{item.checked && <Check size={18} />}</button><div><strong>{item.name}</strong>{item.unresolved && <small>Original quantity</small>}</div><span>{quantityText(item.quantityMin, item.quantityMax, item.unitId)}</span></div>)}</section><footer className="shared-footer"><RefreshCw size={14} /><span>Updated {new Date(list.updatedAt).toLocaleString()}</span></footer></main>;
+  return <main className="shared-page"><header className="shared-header"><div className="shared-brand"><BrandMark /><BrandName /></div><button className="shared-exit" onClick={logout}><LogOut size={18} /></button></header><section className="shared-summary"><p className="eyebrow">Store checklist</p><h1>{list.name}</h1><div><strong>{remaining}</strong> left <span>of {list.items.length}</span></div></section><section className="shared-list">{list.items.map((item) => <div className={`shared-item${item.checked ? " checked" : ""}`} key={item.id}><button className="shared-check" onClick={() => toggle(item.id, !item.checked)} disabled={pending === item.id}>{item.checked && <Check size={18} />}</button><div><strong>{item.name}</strong>{item.unresolved && <small>Original quantity</small>}</div><span>{quantityText(item.quantityMin, item.quantityMax, item.unitId)}</span></div>)}</section><footer className="shared-footer"><RefreshCw size={14} /><span>Updated {new Date(list.updatedAt).toLocaleString()}</span></footer></main>;
 }

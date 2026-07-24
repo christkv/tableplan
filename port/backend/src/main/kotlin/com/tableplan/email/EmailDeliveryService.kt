@@ -108,9 +108,9 @@ class EmailDeliveryService(
         val providerId =
             sender.send(
                 delivery.getString("recipientEmail"),
-                "Your Tableplan shopping list",
-                "<p>Your shopping list is ready.</p><p><a href=\"$url\">Open shopping list</a></p>",
-                "Your shopping list is ready: $url",
+                "Your Table Rhythm shopping list",
+                "<p>Your Table Rhythm shopping list is ready.</p><p><a href=\"$url\">Open shopping list</a></p>",
+                "Your Table Rhythm shopping list is ready: $url",
             )
         deliveries.updateOne(
             Filters.and(Filters.eq("_id", deliveryId), Filters.eq("status", "sending")),
@@ -138,4 +138,3 @@ class EmailDeliveryService(
             createdAt = (document["createdAt"] as Date).toInstant(),
         )
 }
-

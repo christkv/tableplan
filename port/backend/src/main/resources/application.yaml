@@ -56,6 +56,11 @@ tableplan:
     region: ${TABLEPLAN_ARTIFACT_REGION:auto}
     endpoint: ${TABLEPLAN_ARTIFACT_ENDPOINT:}
     path-style-access: ${TABLEPLAN_ARTIFACT_PATH_STYLE:false}
+    chunked-encoding-enabled: ${TABLEPLAN_ARTIFACT_CHUNKED_ENCODING_ENABLED:true}
+    send-server-side-encryption-header: ${TABLEPLAN_ARTIFACT_SEND_SSE_HEADER:true}
+    access-key-id: ${TABLEPLAN_ARTIFACT_ACCESS_KEY_ID:${AWS_ACCESS_KEY_ID:}}
+    secret-access-key: ${TABLEPLAN_ARTIFACT_SECRET_ACCESS_KEY:${AWS_SECRET_ACCESS_KEY:}}
+    session-token: ${TABLEPLAN_ARTIFACT_SESSION_TOKEN:${AWS_SESSION_TOKEN:}}
   extraction:
     provider: ${TABLEPLAN_EXTRACTION_PROVIDER:deterministic}
     openrouter-api-key: ${OPENROUTER_API_KEY:}

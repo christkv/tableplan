@@ -1,4 +1,4 @@
-# Tableplan frontend port
+# Table Rhythm frontend
 
 This directory is the complete React/Vite frontend for the Spring Boot port. It is isolated
 from the legacy React Router/Cloudflare application in `../../app`: the production build
