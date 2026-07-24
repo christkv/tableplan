@@ -19,7 +19,11 @@ while IFS= read -r file; do
 done < <(find "$dist/assets" -maxdepth 1 -type f -name '*.js' | sort)
 
 map_count="$(find "$dist" -type f -name '*.map' | wc -l)"
-static_bytes="$(find "$dist" -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')"
+static_bytes=0
+while IFS= read -r -d '' file; do
+  file_bytes="$(wc -c < "$file")"
+  static_bytes=$((static_bytes + file_bytes))
+done < <(find "$dist" -type f -print0)
 dist_assets="$(find "$dist/assets" -maxdepth 1 -type f | wc -l)"
 jar_assets="$(unzip -Z1 "$jar" | awk '/^BOOT-INF\/classes\/static\/assets\/./ {count++} END {print count + 0}')"
 

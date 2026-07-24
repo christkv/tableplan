@@ -56,7 +56,7 @@ Servers are listed in `deploy/servers.conf`:
 
 ```text
 # name|ssh target|identity file|application port|ssh port
-primary|root@65.109.133.135|~/.ssh/id_ed25519_hetzner|9090|22
+primary|root@65.109.133.135|~/.ssh/id_ed25519_hetzner|80|22
 ```
 
 Add one row for each server. Application deployments are performed
@@ -89,7 +89,8 @@ cp deploy/application.properties.example deploy/application.properties
 Edit at least:
 
 - `tableplan.public-origin`
-- Google OAuth client ID, secret, and redirect URI
+- Google OAuth client ID, secret, and redirect URI when Google sign-in is enabled.
+  Configure all three together; leave all three commented to disable Google OAuth.
 - MongoDB URI and database
 - artifact-storage settings
 - extraction and SMTP settings when enabled
@@ -118,6 +119,10 @@ Deploy the configuration:
 ```bash
 ./scripts/deploy-properties.sh deploy/application.properties
 ```
+
+The configured `server.port` must match the inventory's application port. For
+ports below 1024, bootstrap must install the systemd unit with
+`CAP_NET_BIND_SERVICE` before configuration or application deployment.
 
 With a specific inventory:
 
@@ -184,11 +189,14 @@ It is owned by `tableplan:tableplan` with mode `0600`. If an application is
 already installed, the service is restarted and its readiness is checked. A
 failed configuration update restores the previous properties file.
 
-The external properties file is loaded explicitly by the systemd command:
+The external properties file is loaded explicitly through Spring Boot's standard
+systemd environment setting:
 
 ```text
---spring.config.additional-location=file:/opt/tableplan/shared/application.properties
+SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/tableplan/shared/application.properties
 ```
+
+The resolved location is included in the application's startup environment log.
 
 ## Operating the service
 
@@ -227,13 +235,15 @@ Check readiness directly on the server:
 
 ```bash
 ssh -i ~/.ssh/id_ed25519_hetzner root@65.109.133.135 \
-  'curl --fail --silent --show-error http://127.0.0.1:9090/health/ready'
+  'curl --fail --silent --show-error http://127.0.0.1:80/health/ready'
 ```
 
-The application binds to `127.0.0.1:9090` in the example configuration.
-Terminate public HTTPS at the reverse proxy and forward requests to that
-address. The public origin and Google OAuth redirect URI must use the public
-HTTPS hostname.
+The configured production server binds directly to `0.0.0.0:80`. The systemd
+unit grants only `CAP_NET_BIND_SERVICE` to the unprivileged `tableplan` user so
+Java can bind the privileged port without running as root. Public HTTPS may be
+terminated by Cloudflare before traffic reaches the origin. Restrict origin
+port 80 to trusted ingress at the firewall when possible. The public origin
+and Google OAuth redirect URI must use the public HTTPS hostname.
 
 ## Adding another server
 

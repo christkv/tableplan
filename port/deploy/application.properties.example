@@ -3,16 +3,17 @@
 #   ./scripts/deploy-properties.sh deploy/application.properties
 
 spring.profiles.active=prod
-server.address=127.0.0.1
-server.port=9090
+server.address=0.0.0.0
+server.port=80
 
 # Public HTTPS origin presented by the reverse proxy.
 tableplan.public-origin=https://tableplan.example.com
 tableplan.delivery-secret=
 tableplan.auth.session-cookie-secure=true
-spring.security.oauth2.client.registration.google.redirect-uri=https://tableplan.example.com/login/oauth2/code/google
-spring.security.oauth2.client.registration.google.client-id=
-spring.security.oauth2.client.registration.google.client-secret=
+# Google OAuth is disabled while these properties are commented. Enable all three together.
+# spring.security.oauth2.client.registration.google.redirect-uri=https://tableplan.example.com/login/oauth2/code/google
+# spring.security.oauth2.client.registration.google.client-id=
+# spring.security.oauth2.client.registration.google.client-secret=
 
 tableplan.mongo.uri=mongodb+srv://USER:PASSWORD@HOST/?retryWrites=true&w=majority
 tableplan.mongo.database=application

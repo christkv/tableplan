@@ -14,21 +14,22 @@ Remote instances use this persistent layout:
 ```
 
 `application.properties` is not part of a release and remains in place when the JAR changes.
-The systemd unit starts the application with:
+The systemd unit supplies Spring Boot's standard environment setting:
 
 ```text
---spring.config.additional-location=file:/opt/tableplan/shared/application.properties
+SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/tableplan/shared/application.properties
 ```
 
 This is an additional Spring configuration location: properties in the external file override
-the defaults packaged in `application.yaml`. The file is owned by the unprivileged `tableplan`
-user with mode `0600`.
+the defaults packaged in `application.yaml`. The application prints the resolved location in
+its startup environment report. The file is owned by the unprivileged `tableplan` user with
+mode `0600`.
 
 The inventory at `deploy/servers.conf` uses:
 
 ```text
 name|ssh target|identity file|application port|ssh port
-primary|root@65.109.133.135|~/.ssh/id_ed25519_hetzner|9090|22
+primary|root@65.109.133.135|~/.ssh/id_ed25519_hetzner|80|22
 ```
 
 Add one row per server. Deployments run sequentially. Host-key checking remains enabled;
@@ -37,9 +38,12 @@ the first connection accepts and records a new host key, while changed keys fail
 ## First installation
 
 The bootstrap targets Ubuntu and must connect as root. It installs
-`openjdk-21-jre-headless`, `curl`, and `ca-certificates` with apt when needed. Install and
-configure a TLS reverse proxy such as Caddy or nginx separately. The example properties bind
-Spring Boot to `127.0.0.1:9090`; only the reverse proxy should be publicly reachable.
+`openjdk-21-jre-headless`, `curl`, and `ca-certificates` with apt when needed. The configured
+production instance binds Spring Boot to `0.0.0.0:80`; systemd grants the unprivileged process
+only `CAP_NET_BIND_SERVICE`. Cloudflare can terminate public HTTPS before forwarding to this
+origin. Restrict origin port 80 to trusted ingress at the firewall when possible. For deployments
+using a local Caddy or nginx proxy instead, bind Spring Boot to `127.0.0.1:9090` and change the
+inventory application port to `9090`.
 
 Create the private local configuration:
 

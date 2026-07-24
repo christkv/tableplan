@@ -46,6 +46,10 @@ for index in "${!TABLEPLAN_SERVER_NAMES[@]}"; do
     remote_upload="/tmp/tableplan-${release}.jar"
 
     echo "== [$name] upload release $release to $target"
+    echo "   copy:    $jar"
+    echo "   upload:  $target:$remote_upload"
+    echo "   install: $target:/opt/tableplan/releases/$release/tableplan.jar"
+    echo "   activate: $target:/opt/tableplan/current -> /opt/tableplan/releases/$release"
     tableplan_scp "$jar" "$target" "$identity" "$ssh_port" "$remote_upload"
     tableplan_ssh "$target" "$identity" "$ssh_port" \
         bash -s -- "$remote_upload" "$release" "$checksum" "$app_port" <<'REMOTE'
@@ -62,6 +66,38 @@ previous_target="$(readlink -f "$root/current" 2>/dev/null || true)"
     echo "application.properties is missing. Deploy it before the application JAR." >&2
     exit 1
 }
+configured_server_port="$(
+    awk -F= '
+        /^[[:space:]]*[#!]/ { next }
+        {
+            key = $1
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+            if (key == "server.port") {
+                value = substr($0, index($0, "=") + 1)
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+                resolved = value
+            }
+        }
+        END { print resolved }
+    ' "$root/shared/application.properties"
+)"
+configured_server_port="${configured_server_port:-9090}"
+if [[ "$configured_server_port" != "$app_port" ]]; then
+    rm -f "$upload"
+    echo "Port mismatch: remote application.properties configures server.port=$configured_server_port" >&2
+    echo "but the server inventory configures application port $app_port." >&2
+    echo "Deploy the current application.properties before deploying the JAR." >&2
+    exit 1
+fi
+if ((app_port < 1024)); then
+    ambient_capabilities="$(systemctl show tableplan.service --property=AmbientCapabilities --value)"
+    if [[ " $ambient_capabilities " != *" cap_net_bind_service "* ]]; then
+        rm -f "$upload"
+        echo "The installed tableplan.service cannot bind privileged port $app_port." >&2
+        echo "Run scripts/bootstrap-remote.sh to install the updated systemd unit first." >&2
+        exit 1
+    fi
+fi
 actual_checksum="$(sha256sum "$upload" | awk '{print $1}')"
 [[ "$actual_checksum" == "$expected_checksum" ]] || {
     echo "Uploaded JAR checksum mismatch." >&2
@@ -77,6 +113,9 @@ rm -f "$upload"
 
 ln -sfn "$release_directory" "$root/current.next"
 mv -Tf "$root/current.next" "$root/current"
+echo "Installed release JAR: $release_directory/tableplan.jar"
+echo "Activated release: $root/current -> $release_directory"
+systemctl reset-failed tableplan.service || true
 systemctl restart tableplan.service
 
 for attempt in $(seq 1 30); do
@@ -91,6 +130,7 @@ journalctl -u tableplan.service -n 80 --no-pager >&2 || true
 if [[ -n "$previous_target" && -f "$previous_target/tableplan.jar" ]]; then
     ln -sfn "$previous_target" "$root/current.next"
     mv -Tf "$root/current.next" "$root/current"
+    systemctl reset-failed tableplan.service || true
     systemctl restart tableplan.service
     echo "Release failed health checks; rolled back to $previous_target." >&2
 else

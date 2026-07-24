@@ -17,6 +17,10 @@ class StartupEnvironmentReporter(
         val settings =
             listOf(
                 setting("SERVER_PORT", environment.getProperty("server.port") ?: "9090"),
+                setting(
+                    "SPRING_CONFIG_ADDITIONAL_LOCATION",
+                    environment.getProperty("spring.config.additional-location"),
+                ),
                 setting("TABLEPLAN_PUBLIC_ORIGIN", properties.publicOrigin),
                 setting("TABLEPLAN_SESSION_COOKIE_SECURE", properties.auth.sessionCookieSecure),
                 setting(

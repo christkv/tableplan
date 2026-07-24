@@ -15,6 +15,9 @@ for index in "${!TABLEPLAN_SERVER_NAMES[@]}"; do
     remote_service="/tmp/tableplan.service.$$"
 
     echo "== [$name] bootstrap $target"
+    echo "   copy:    $service_file"
+    echo "   upload:  $target:$remote_service"
+    echo "   install: $target:/etc/systemd/system/tableplan.service"
     tableplan_scp "$service_file" "$target" "$identity" "$ssh_port" "$remote_service"
     tableplan_ssh "$target" "$identity" "$ssh_port" bash -s -- "$remote_service" <<'REMOTE'
 set -euo pipefail
@@ -68,6 +71,10 @@ install -o root -g root -m 0644 "$service_file" /etc/systemd/system/tableplan.se
 rm -f "$service_file"
 systemctl daemon-reload
 systemctl enable tableplan.service
+echo "Installed systemd unit: /etc/systemd/system/tableplan.service"
+echo "Created release directory: /opt/tableplan/releases"
+echo "Created shared directory: /opt/tableplan/shared"
+echo "Created artifact directory: /opt/tableplan/shared/artifacts"
 echo "Tableplan service installed. Deploy application.properties and the JAR before starting it."
 REMOTE
 done

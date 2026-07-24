@@ -11,7 +11,8 @@ User=tableplan
 Group=tableplan
 WorkingDirectory=/opt/tableplan/shared
 Environment=SPRING_PROFILES_ACTIVE=prod
-ExecStart=/usr/bin/java -jar /opt/tableplan/current/tableplan.jar serve --spring.config.additional-location=file:/opt/tableplan/shared/application.properties
+Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/tableplan/shared/application.properties
+ExecStart=/usr/bin/java -jar /opt/tableplan/current/tableplan.jar serve
 SuccessExitStatus=143
 Restart=always
 RestartSec=5
@@ -19,6 +20,8 @@ KillSignal=SIGTERM
 TimeoutStopSec=30
 UMask=0077
 NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
