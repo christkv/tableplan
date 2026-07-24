@@ -36,9 +36,10 @@ the first connection accepts and records a new host key, while changed keys fail
 
 ## First installation
 
-Install a Java 21 runtime and a TLS reverse proxy such as Caddy or nginx on the server. The
-example properties bind Spring Boot to `127.0.0.1:9090`; only the reverse proxy should be
-publicly reachable.
+The bootstrap targets Ubuntu and must connect as root. It installs
+`openjdk-21-jre-headless`, `curl`, and `ca-certificates` with apt when needed. Install and
+configure a TLS reverse proxy such as Caddy or nginx separately. The example properties bind
+Spring Boot to `127.0.0.1:9090`; only the reverse proxy should be publicly reachable.
 
 Create the private local configuration:
 
@@ -62,6 +63,11 @@ Bootstrap does not start the service. Deploy configuration and application indep
 ./scripts/deploy-properties.sh deploy/application.properties
 ./scripts/deploy-application.sh
 ```
+
+The bootstrap enables `tableplan.service` at boot. The first application deployment starts it,
+and systemd subsequently restarts the process after an unexpected exit. Restarts are delayed by
+five seconds and limited to ten attempts within five minutes to avoid an uncontrolled crash loop.
+An operator-initiated `systemctl stop tableplan` remains stopped.
 
 The application deploy performs the full build and tests, uploads the JAR with SCP, verifies
 its SHA-256 on the server, switches the `current` symlink atomically, restarts systemd, and
@@ -91,8 +97,8 @@ ssh -i ~/.ssh/id_ed25519_hetzner root@65.109.133.135 \
   'systemctl status tableplan --no-pager; journalctl -u tableplan -n 100 --no-pager'
 ```
 
-The scripts deliberately do not install Java, configure DNS/TLS/firewalls, migrate MongoDB, or
-upload backup material. Those remain explicit operator actions.
+The scripts deliberately do not configure DNS/TLS/firewalls, migrate MongoDB, or upload backup
+material. Those remain explicit operator actions.
 
 ## Release procedure
 

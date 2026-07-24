@@ -51,8 +51,10 @@ cp deploy/application.properties.example deploy/application.properties
 ```
 
 The initial server inventory is `deploy/servers.conf`. Add another pipe-separated row to deploy
-sequentially to more servers. See the [deployment runbook](docs/runbooks/deployment.md) for
-configuration precedence, rollback behavior, and production proxy requirements.
+sequentially to more servers. See the [scripts guide](scripts/README.md) for the exact bootstrap,
+deployment, service, backup, and restore commands, and the
+[deployment runbook](docs/runbooks/deployment.md) for configuration precedence, rollback
+behavior, and production proxy requirements.
 
 ## Repository map
 

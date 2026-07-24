@@ -20,10 +20,33 @@ for index in "${!TABLEPLAN_SERVER_NAMES[@]}"; do
 set -euo pipefail
 service_file="$1"
 
-[[ -x /usr/bin/java ]] || {
-    echo "Java is not installed. Install a Java 21 runtime before bootstrapping Tableplan." >&2
+[[ "$(id -u)" == "0" ]] || {
+    echo "Remote bootstrap must run as root." >&2
     exit 1
 }
+[[ -r /etc/os-release ]] || {
+    echo "Cannot identify the remote operating system." >&2
+    exit 1
+}
+source /etc/os-release
+[[ "${ID:-}" == "ubuntu" ]] || {
+    echo "This bootstrap supports Ubuntu; found ${PRETTY_NAME:-unknown}." >&2
+    exit 1
+}
+
+java_is_compatible=false
+if [[ -x /usr/bin/java ]]; then
+    java_version="$(/usr/bin/java -version 2>&1 | head -n 1)"
+    if [[ "$java_version" =~ \"([0-9]+) ]] && ((BASH_REMATCH[1] >= 21)); then
+        java_is_compatible=true
+    fi
+fi
+if [[ "$java_is_compatible" == false ]] || ! command -v curl >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install --yes --no-install-recommends openjdk-21-jre-headless curl ca-certificates
+fi
+
 java_version="$(/usr/bin/java -version 2>&1 | head -n 1)"
 if [[ ! "$java_version" =~ \"([0-9]+) ]] || ((BASH_REMATCH[1] < 21)); then
     echo "Tableplan requires Java 21 or newer; found: $java_version" >&2
