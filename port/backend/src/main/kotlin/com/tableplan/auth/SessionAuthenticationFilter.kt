@@ -20,22 +20,25 @@ class SessionAuthenticationFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        if (SecurityContextHolder.getContext().authentication == null) {
+        val context = SecurityContextHolder.getContext()
+        if (context.authentication?.principal !is TableplanPrincipal) {
             val token = request.cookies?.firstOrNull { it.name == SESSION_COOKIE }?.value
             val principal = token?.let(sessions::resolve)
             if (principal != null) {
-                SecurityContextHolder.getContext().authentication =
+                context.authentication =
                     UsernamePasswordAuthenticationToken.authenticated(principal, token, emptyList())
             }
-            if (request.requestURI == "/api/auth/session") {
-                sessionLogger.info(
-                    "Browser session check cookiePresent={} sessionResolved={} host={} forwardedHost={}",
-                    token != null,
-                    principal != null,
-                    request.getHeader("Host") ?: "<none>",
-                    request.getHeader("X-Forwarded-Host") ?: "<none>",
-                )
-            }
+        }
+        if (request.requestURI == "/api/auth/session") {
+            val authentication = context.authentication
+            sessionLogger.info(
+                "Browser session check cookiePresent={} sessionResolved={} authenticationType={} host={} forwardedHost={}",
+                request.cookies?.any { it.name == SESSION_COOKIE } == true,
+                authentication?.principal is TableplanPrincipal,
+                authentication?.javaClass?.simpleName ?: "<none>",
+                request.getHeader("Host") ?: "<none>",
+                request.getHeader("X-Forwarded-Host") ?: "<none>",
+            )
         }
         filterChain.doFilter(request, response)
     }

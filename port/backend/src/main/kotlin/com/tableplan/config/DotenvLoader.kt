@@ -16,6 +16,8 @@ object DotenvLoader {
                 "spring.security.oauth2.client.registration.google.client-id",
             "SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET" to
                 "spring.security.oauth2.client.registration.google.client-secret",
+            "SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI" to
+                "spring.security.oauth2.client.registration.google.redirect-uri",
             "SPRING_MAIL_HOST" to "spring.mail.host",
             "SPRING_MAIL_PORT" to "spring.mail.port",
             "SPRING_MAIL_USERNAME" to "spring.mail.username",

@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.springframework.http.HttpHeaders
-import org.springframework.http.ResponseCookie
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.csrf.CsrfToken
 import org.springframework.web.bind.annotation.GetMapping
@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.time.Duration
 
 const val SESSION_COOKIE = "TABLEPLAN_SESSION"
 
@@ -51,6 +50,7 @@ data class UserResponse(
 class AuthController(
     private val accounts: AccountService,
     private val sessions: SessionRepository,
+    private val sessionCookies: SessionCookieFactory,
 ) {
     @GetMapping("/csrf")
     fun csrf(token: CsrfToken) = mapOf("headerName" to token.headerName, "token" to token.token)
@@ -63,7 +63,7 @@ class AuthController(
     ): SessionResponse {
         val user = accounts.register(body.name, body.email, body.username, body.password)
         val session = sessions.create(user.id, user.householdId)
-        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie(session, request.isSecure).toString())
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookies.create(session, request).toString())
         return user.toSessionResponse()
     }
 
@@ -75,31 +75,23 @@ class AuthController(
     ): SessionResponse {
         val user = accounts.authenticate(body.identifier, body.password)
         val session = sessions.create(user.id, user.householdId)
-        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie(session, request.isSecure).toString())
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookies.create(session, request).toString())
         return user.toSessionResponse()
     }
 
     @PostMapping("/logout")
     fun logout(request: HttpServletRequest, response: HttpServletResponse) {
         request.cookies?.firstOrNull { it.name == SESSION_COOKIE }?.value?.let(sessions::revoke)
-        response.addHeader(
-            HttpHeaders.SET_COOKIE,
-            ResponseCookie.from(SESSION_COOKIE, "")
-                .httpOnly(true)
-                .secure(request.isSecure)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(Duration.ZERO)
-                .build()
-                .toString(),
-        )
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookies.clear(request).toString())
     }
 
     @GetMapping("/session")
-    fun session(authentication: Authentication?): SessionResponse? {
-        val principal = authentication?.principal as? TableplanPrincipal ?: return null
-        val user = accounts.find(principal.userId) ?: return null
-        return user.toSessionResponse()
+    fun session(authentication: Authentication?): ResponseEntity<SessionResponse> {
+        val principal =
+            authentication?.principal as? TableplanPrincipal
+                ?: return ResponseEntity.noContent().build()
+        val user = accounts.find(principal.userId) ?: return ResponseEntity.noContent().build()
+        return ResponseEntity.ok(user.toSessionResponse())
     }
 
     @PostMapping("/switch-household")
@@ -123,15 +115,6 @@ class AuthController(
             ?: throw com.tableplan.api.ApiException(404, "user_not_found", "User not found.")
         return user.copy(householdId = body.householdId).toSessionResponse()
     }
-
-    private fun sessionCookie(session: CreatedSession, secure: Boolean): ResponseCookie =
-        ResponseCookie.from(SESSION_COOKIE, session.token)
-            .httpOnly(true)
-            .secure(secure)
-            .sameSite("Lax")
-            .path("/")
-            .maxAge(Duration.between(java.time.Instant.now(), session.expiresAt))
-            .build()
 
     private fun AccountUser.toSessionResponse() =
         SessionResponse(UserResponse(id, name, email, username), householdId)

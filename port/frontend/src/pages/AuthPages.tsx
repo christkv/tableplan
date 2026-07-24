@@ -9,13 +9,9 @@ import { useSession } from "../session";
 export function SignInPage({ initialMode = "sign-in" }: { initialMode?: "sign-in" | "sign-up" }) {
   const [searchParams] = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
-  const oauthBackendOrigin = import.meta.env.DEV
-    ? (import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:9090`)
-    : "";
   const googleAuthorizationUrl =
-    `${oauthBackendOrigin}/oauth2/authorization/google` +
-    `?returnTo=${encodeURIComponent(returnTo)}` +
-    `&return_origin=${encodeURIComponent(window.location.origin)}`;
+    `/oauth2/authorization/google` +
+    `?returnTo=${encodeURIComponent(returnTo)}`;
   const [mode, setMode] = useState(initialMode);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");

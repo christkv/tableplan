@@ -12,11 +12,16 @@ import org.springframework.validation.annotation.Validated
 data class TableplanProperties(
     @field:NotBlank val publicOrigin: String = "http://localhost:9090",
     val deliverySecret: String = "",
+    @field:Valid val auth: Auth = Auth(),
     @field:Valid val mongo: Mongo = Mongo(),
     @field:Valid val jobs: Jobs = Jobs(),
     @field:Valid val artifacts: Artifacts = Artifacts(),
     @field:Valid val extraction: Extraction = Extraction(),
 ) {
+    data class Auth(
+        val sessionCookieSecure: Boolean = false,
+    )
+
     data class Mongo(
         @field:NotBlank val uri: String = "mongodb://127.0.0.1:27017/?replicaSet=rs0",
         @field:NotBlank val database: String = "application_local",

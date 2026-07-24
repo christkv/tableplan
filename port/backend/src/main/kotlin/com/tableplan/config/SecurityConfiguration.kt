@@ -3,6 +3,7 @@ package com.tableplan.config
 import com.tableplan.auth.ApiKeyAuthenticationFilter
 import com.tableplan.auth.ApiScopeFilter
 import com.tableplan.auth.GoogleOAuthSuccessHandler
+import com.tableplan.auth.GoogleOAuthFailureHandler
 import com.tableplan.auth.SessionAuthenticationFilter
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository
 import org.springframework.security.web.util.matcher.AndRequestMatcher
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher
 import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher
@@ -28,6 +30,7 @@ class SecurityConfiguration(
     private val apiKeyAuthenticationFilter: ApiKeyAuthenticationFilter,
     private val apiScopeFilter: ApiScopeFilter,
     private val googleOAuthSuccessHandler: GoogleOAuthSuccessHandler,
+    private val googleOAuthFailureHandler: GoogleOAuthFailureHandler,
     private val clientRegistrations: ObjectProvider<ClientRegistrationRepository>,
 ) {
     @org.springframework.context.annotation.Bean
@@ -35,6 +38,10 @@ class SecurityConfiguration(
         val csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse()
         csrfRepository.setCookiePath("/")
         http
+            .securityContext {
+                it.securityContextRepository(RequestAttributeSecurityContextRepository())
+            }
+            .requestCache { it.disable() }
             .addFilterBefore(sessionAuthenticationFilter, AnonymousAuthenticationFilter::class.java)
             .addFilterAfter(apiKeyAuthenticationFilter, SessionAuthenticationFilter::class.java)
             .addFilterAfter(apiScopeFilter, ApiKeyAuthenticationFilter::class.java)
@@ -111,7 +118,10 @@ class SecurityConfiguration(
                 }
             }
         if (clientRegistrations.ifAvailable != null) {
-            http.oauth2Login { it.successHandler(googleOAuthSuccessHandler) }
+            http.oauth2Login {
+                it.successHandler(googleOAuthSuccessHandler)
+                    .failureHandler(googleOAuthFailureHandler)
+            }
         }
         return http.build()
     }

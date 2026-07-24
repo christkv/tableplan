@@ -16,6 +16,12 @@ server:
   port: ${SERVER_PORT:9090}
   shutdown: graceful
   forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 10m
+      cookie:
+        http-only: true
+        same-site: lax
   compression:
     enabled: true
 management:
@@ -30,6 +36,8 @@ management:
 tableplan:
   public-origin: ${TABLEPLAN_PUBLIC_ORIGIN:http://localhost:9090}
   delivery-secret: ${TABLEPLAN_DELIVERY_SECRET:}
+  auth:
+    session-cookie-secure: ${TABLEPLAN_SESSION_COOKIE_SECURE:false}
   mongo:
     uri: ${TABLEPLAN_MONGO_URI:mongodb://127.0.0.1:27017/?replicaSet=rs0}
     database: ${TABLEPLAN_MONGO_DATABASE:application_local}

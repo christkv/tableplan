@@ -27,13 +27,10 @@ class GoogleOAuthRedirectLoggingFilter : OncePerRequestFilter() {
         filterChain: FilterChain,
     ) {
         if (request.requestURI == GOOGLE_AUTHORIZATION_PATH) {
-            validatedOAuthReturnOrigin(
-                request.getParameter("return_origin"),
-                request.scheme,
-                request.serverName,
-            )?.let { origin ->
-                request.getSession(true).setAttribute(OAUTH_RETURN_ORIGIN_ATTRIBUTE, origin)
-            }
+            request.getSession(true).setAttribute(
+                OAUTH_RETURN_TO_ATTRIBUTE,
+                validatedOAuthReturnTo(request.getParameter("returnTo")),
+            )
         }
         filterChain.doFilter(request, response)
         if (request.requestURI == GOOGLE_CALLBACK_PATH) {
@@ -73,21 +70,15 @@ internal fun extractGoogleRedirectUri(location: String?): String? {
         ?.takeIf(String::isNotBlank)
 }
 
-internal fun validatedOAuthReturnOrigin(
-    value: String?,
-    requestScheme: String,
-    requestHost: String,
-): String? {
-    if (value.isNullOrBlank()) return null
-    val uri = runCatching { URI.create(value) }.getOrNull() ?: return null
-    if (uri.scheme !in setOf("http", "https")) return null
-    if (!uri.scheme.equals(requestScheme, ignoreCase = true)) return null
-    if (!uri.host.equals(requestHost, ignoreCase = true)) return null
-    if (uri.userInfo != null || uri.query != null || uri.fragment != null) return null
-    if (uri.path.isNotEmpty() && uri.path != "/") return null
-    return "${uri.scheme.lowercase()}://${uri.rawAuthority}"
+internal fun validatedOAuthReturnTo(value: String?): String {
+    if (value.isNullOrBlank() || !value.startsWith("/") || value.startsWith("//")) return DEFAULT_OAUTH_RETURN_TO
+    if (value.any { it == '\\' || it == '\r' || it == '\n' }) return DEFAULT_OAUTH_RETURN_TO
+    val uri = runCatching { URI.create(value) }.getOrNull() ?: return DEFAULT_OAUTH_RETURN_TO
+    if (uri.isAbsolute || uri.rawAuthority != null || uri.rawFragment != null) return DEFAULT_OAUTH_RETURN_TO
+    return value
 }
 
-internal const val OAUTH_RETURN_ORIGIN_ATTRIBUTE = "tableplan.oauth.returnOrigin"
+internal const val OAUTH_RETURN_TO_ATTRIBUTE = "tableplan.oauth.returnTo"
+internal const val DEFAULT_OAUTH_RETURN_TO = "/recipes"
 private const val GOOGLE_AUTHORIZATION_PATH = "/oauth2/authorization/google"
 private const val GOOGLE_CALLBACK_PATH = "/login/oauth2/code/google"

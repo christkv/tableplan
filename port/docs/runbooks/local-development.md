@@ -22,8 +22,21 @@ java -jar backend/build/libs/tableplan.jar migrate
 JOBS_ENABLED=true java -jar backend/build/libs/tableplan.jar serve
 ```
 
-For split hot reload, run `./gradlew :backend:bootRun` and `npm run dev` in `frontend`.
-Vite proxies `/api` and `/mcp` to Spring Boot.
+For split hot reload, use one browser-visible origin even though two processes run:
+
+```dotenv
+TABLEPLAN_PUBLIC_ORIGIN=http://localhost:5173
+SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=http://localhost:5173/login/oauth2/code/google
+TABLEPLAN_SESSION_COOKIE_SECURE=false
+```
+
+Register that exact callback URI in the local Google OAuth web client. Run
+`./gradlew :backend:bootRun` from the repository root and `npm run dev` in `frontend`, then
+open only `http://localhost:5173`. Vite proxies API, MCP, OAuth initiation, and the OAuth
+callback to Spring Boot. Do not mix `localhost` and `127.0.0.1` in browser URLs.
+
+For packaged local testing, set both origins to `http://localhost:9090`, build the JAR, and
+open Spring Boot directly. A separate Google OAuth client for local development is recommended.
 
 ## Operator modes
 

@@ -13,6 +13,25 @@
 Required secrets are injected at runtime. Never place Mongo, OAuth, delivery, API-key, email,
 or object-store credentials in the image or repository.
 
+The production browser, SPA, API, and OAuth endpoints must share one HTTPS origin. Configure:
+
+```text
+SPRING_PROFILES_ACTIVE=prod
+TABLEPLAN_PUBLIC_ORIGIN=https://app.example.com
+SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=https://app.example.com/login/oauth2/code/google
+TABLEPLAN_SESSION_COOKIE_SECURE=true
+```
+
+Register the exact HTTPS callback in a production Google OAuth web client that is separate
+from local development. The trusted edge proxy must remove inbound `Forwarded` and
+`X-Forwarded-*` headers before setting its own. Route the complete origin to Spring Boot; the
+packaged JAR serves both the SPA and API, so production does not require CORS.
+
+The OAuth authorization request is transient servlet-session state. Run a single web replica
+until that state is moved to a shared one-time repository, or configure temporary load-balancer
+affinity for OAuth initiation and callback. Tableplan application sessions are already
+Mongo-backed and do not require affinity after the callback.
+
 Connection budget: `replicas × TABLEPLAN_MONGO_MAX_POOL_SIZE`, plus operator jobs, must stay
 below the deployment's MongoDB connection allowance with at least 20% headroom.
 

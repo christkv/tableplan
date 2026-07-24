@@ -34,8 +34,23 @@ npm run build
 npm run dev
 ```
 
-Vite proxies `/api` and `/mcp` to the Spring server during development. The normal Gradle
-build runs the frontend tests and build before packaging:
+For split hot reload, configure the root `.env` with the browser-visible origin:
+
+```dotenv
+TABLEPLAN_PUBLIC_ORIGIN=http://localhost:5173
+SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=http://localhost:5173/login/oauth2/code/google
+TABLEPLAN_SESSION_COOKIE_SECURE=false
+```
+
+Run `./gradlew :backend:bootRun` from the repository root and `npm run dev` here, then open
+only `http://localhost:5173`. Vite proxies `/api`, `/mcp`, `/oauth2`, and `/login/oauth2` to
+Spring Boot. Its port is strict because the OAuth callback must exactly match the URI
+registered with Google.
+
+For packaged local testing, use `http://localhost:9090` for both origins and open Spring Boot
+directly.
+
+The normal Gradle build runs the frontend tests and build before packaging:
 
 ```bash
 ./gradlew check :backend:bootJar

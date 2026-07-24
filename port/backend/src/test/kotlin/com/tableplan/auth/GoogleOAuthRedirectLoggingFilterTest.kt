@@ -26,18 +26,16 @@ class GoogleOAuthRedirectLoggingFilterTest {
     }
 
     @Test
-    fun `allows a return origin on the same host with a different development port`() {
-        assertEquals(
-            "http://localhost:5173",
-            validatedOAuthReturnOrigin("http://localhost:5173", "http", "localhost"),
-        )
+    fun `allows a relative oauth return path`() {
+        assertEquals("/plan?week=2026-07-20", validatedOAuthReturnTo("/plan?week=2026-07-20"))
     }
 
     @Test
-    fun `rejects unsafe oauth return origins`() {
-        assertNull(validatedOAuthReturnOrigin("https://localhost:5173", "http", "localhost"))
-        assertNull(validatedOAuthReturnOrigin("http://example.com:5173", "http", "localhost"))
-        assertNull(validatedOAuthReturnOrigin("http://user@localhost:5173", "http", "localhost"))
-        assertNull(validatedOAuthReturnOrigin("http://localhost:5173/untrusted", "http", "localhost"))
+    fun `replaces unsafe oauth return paths with the default`() {
+        assertEquals(DEFAULT_OAUTH_RETURN_TO, validatedOAuthReturnTo(null))
+        assertEquals(DEFAULT_OAUTH_RETURN_TO, validatedOAuthReturnTo("https://example.com/recipes"))
+        assertEquals(DEFAULT_OAUTH_RETURN_TO, validatedOAuthReturnTo("//example.com/recipes"))
+        assertEquals(DEFAULT_OAUTH_RETURN_TO, validatedOAuthReturnTo("/recipes#fragment"))
+        assertEquals(DEFAULT_OAUTH_RETURN_TO, validatedOAuthReturnTo("/recipes\r\nLocation: https://example.com"))
     }
 }

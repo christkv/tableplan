@@ -24,14 +24,14 @@ class GoogleOAuthSuccessHandlerTest {
     }
 
     @Test
-    fun `returns to the validated frontend origin after oauth`() {
+    fun `returns to the validated relative page after oauth`() {
         val request =
             MockHttpServletRequest().apply {
                 requireNotNull(getSession(true))
-                    .setAttribute(OAUTH_RETURN_ORIGIN_ATTRIBUTE, "http://localhost:5173")
+                    .setAttribute(OAUTH_RETURN_TO_ATTRIBUTE, "/plan?week=2026-07-20")
             }
 
-        assertEquals("http://localhost:5173/recipes", oauthSuccessLocation(request))
-        assertEquals(null, request.getSession(false)?.getAttribute(OAUTH_RETURN_ORIGIN_ATTRIBUTE))
+        assertEquals("/plan?week=2026-07-20", oauthSuccessLocation(request))
+        assertEquals(null, request.getSession(false)?.getAttribute(OAUTH_RETURN_TO_ATTRIBUTE))
     }
 }

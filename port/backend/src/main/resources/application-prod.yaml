@@ -1,0 +1,9 @@
+tableplan:
+  auth:
+    session-cookie-secure: true
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true

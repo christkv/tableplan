@@ -18,6 +18,7 @@ class StartupEnvironmentReporter(
             listOf(
                 setting("SERVER_PORT", environment.getProperty("server.port") ?: "9090"),
                 setting("TABLEPLAN_PUBLIC_ORIGIN", properties.publicOrigin),
+                setting("TABLEPLAN_SESSION_COOKIE_SECURE", properties.auth.sessionCookieSecure),
                 setting(
                     "TABLEPLAN_VIRTUAL_THREADS",
                     environment.getProperty("spring.threads.virtual.enabled") ?: "true",
@@ -58,6 +59,12 @@ class StartupEnvironmentReporter(
                     "SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET",
                     environment.getProperty("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET"),
                     sensitive = true,
+                ),
+                setting(
+                    "SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI",
+                    environment.getProperty(
+                        "spring.security.oauth2.client.registration.google.redirect-uri",
+                    ),
                 ),
                 setting("SPRING_MAIL_HOST", environment.getProperty("SPRING_MAIL_HOST")),
                 setting("SPRING_MAIL_PORT", environment.getProperty("SPRING_MAIL_PORT")),
