@@ -19,6 +19,8 @@ data class FavouriteRequest(val favourite: Boolean)
 
 data class MeasurementRequest(val measurementSystem: String)
 
+data class AppearanceRequest(val appearance: String)
+
 data class MealSlotsRequest(@field:Size(min = 1, max = 8) val mealSlots: List<MealSlot>)
 
 data class SaveSearchRequest(
@@ -55,6 +57,10 @@ class TenantController(
     @PutMapping("/preferences/measurement")
     fun measurement(@RequestBody request: MeasurementRequest, authentication: Authentication) =
         tenant.updateMeasurement(authentication.principal(), request.measurementSystem)
+
+    @PutMapping("/preferences/appearance")
+    fun appearance(@RequestBody request: AppearanceRequest, authentication: Authentication) =
+        tenant.updateAppearance(authentication.principal(), request.appearance)
 
     @PutMapping("/preferences/meal-slots")
     fun mealSlots(@Valid @RequestBody request: MealSlotsRequest, authentication: Authentication) =

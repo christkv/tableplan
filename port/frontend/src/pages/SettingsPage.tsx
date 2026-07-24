@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Check, Clock3, KeyRound, Mail, Plus, Ruler, ShieldCheck, Trash2, UserPlus, UtensilsCrossed, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Clock3, KeyRound, Mail, Monitor, Moon, Plus, Ruler, ShieldCheck, Sun, Trash2, UserPlus, UtensilsCrossed, Users } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
   ApiKeyView,
@@ -17,11 +17,13 @@ import {
 } from "../api";
 import { Button, Input, Select } from "../components/ui";
 import { useSession } from "../session";
+import { Appearance, useTheme } from "../theme";
 
 const defaultScopes = ["recipes:read", "plans:read", "plans:write", "shopping:read", "shopping:write", "household:read"];
 
 export function SettingsPage() {
   const { setSession } = useSession();
+  const { setAppearance } = useTheme();
   const [preferences, setPreferences] = useState<Preferences>();
   const [household, setHousehold] = useState<Household>();
   const [households, setHouseholds] = useState<HouseholdChoice[]>([]);
@@ -84,6 +86,14 @@ export function SettingsPage() {
     setPreferences(await request("/api/v1/preferences/measurement", put({ measurementSystem: value })));
     setMessage("Measurement preference saved.");
   }
+  async function appearance(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = String(new FormData(event.currentTarget).get("appearance")) as Appearance;
+    const next = await request<Preferences>("/api/v1/preferences/appearance", put({ appearance: value }));
+    setPreferences(next);
+    setAppearance(next.appearance);
+    setMessage("Appearance preference saved.");
+  }
   async function saveSlots(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const next = await request<Preferences>("/api/v1/preferences/meal-slots", put({ mealSlots: slots.map(({ id, label }) => ({ id, label })) }));
@@ -114,7 +124,7 @@ export function SettingsPage() {
   }
   if (!preferences || !household) return <div className="page-shell"><p className="recipe-load-sentinel">Loading settings…</p>{error && <p className="form-error">{error}</p>}</div>;
   return <div className="page-shell">
-    <header className="page-header"><div><p className="eyebrow">Household</p><h1>Settings</h1><p className="page-subtitle">Manage family defaults and external access.</p></div></header>
+    <header className="page-header"><div><p className="eyebrow">Household</p><h1>Settings</h1><p className="page-subtitle">Manage your display, family defaults, and external access.</p></div></header>
     {message && <p className="settings-saved" role="status"><Check size={15} /> {message}</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
     <section className="household-section"><div className="section-heading"><div><p className="eyebrow">{household.name}</p><h2>Household members</h2></div><Users size={20} /></div>
@@ -125,6 +135,11 @@ export function SettingsPage() {
         {!!invitations.length && <div className="pending-invitations"><h3>Pending invitations</h3>{invitations.map((invitation) => <div className="pending-invitation-row" key={invitation.id}><Mail size={17} /><div><strong>{invitation.email}</strong><small>{invitation.relationship} · {invitation.role}</small></div><span className={new Date(invitation.expiresAt) <= new Date() ? "invite-expired" : ""}><Clock3 size={13} /> {new Date(invitation.expiresAt) <= new Date() ? "Expired" : invitation.deliveryStatus ?? "pending"}</span><Button variant="ghost" size="icon" onClick={() => revokeInvitation(invitation.id)}><Trash2 size={16} /></Button></div>)}</div>}
       </> : <p className="household-permission-note">Only household managers can invite new members.</p>}
     </section>
+    <section className="appearance-section"><div className="section-heading"><div><p className="eyebrow">Personal display</p><h2>Appearance</h2></div><Sun size={20} /></div><form className="appearance-form" onSubmit={appearance}><fieldset className="appearance-options"><legend>Color appearance</legend>{([
+      ["system", "System", "Follow this device", Monitor],
+      ["light", "Light", "Keep dark mode off", Sun],
+      ["dark", "Dark", "Keep dark mode on", Moon],
+    ] as const).map(([value, label, detail, Icon]) => <label key={value}><input type="radio" name="appearance" value={value} defaultChecked={(preferences.appearance ?? "system") === value} /><Icon size={17} /><span><strong>{label}</strong><small>{detail}</small></span></label>)}</fieldset><div className="appearance-actions"><span /><Button>Save appearance</Button></div></form></section>
     <section className="measurement-section"><div className="section-heading"><div><p className="eyebrow">Recipe and shopping display</p><h2>Measurements</h2></div><Ruler size={20} /></div><form className="measurement-form" onSubmit={measurement}><fieldset className="measurement-options"><legend>Preferred measurement system</legend>{([["original", "Original", "Keep recipe source units"], ["metric", "Metric (EU)", "Grams, kilograms, and liters"], ["us", "US customary", "Ounces, pounds, cups, and spoons"]] as const).map(([value, label, detail]) => <label key={value}><input type="radio" name="measurementSystem" value={value} defaultChecked={preferences.measurementSystem === value} /><span><strong>{label}</strong><small>{detail}</small></span></label>)}</fieldset><div className="measurement-actions"><span /><Button>Save measurements</Button></div></form></section>
     <section className="meal-slot-section"><div className="section-heading"><div><p className="eyebrow">Weekly plan structure</p><h2>Meal sections</h2></div><UtensilsCrossed size={20} /></div><form className="meal-slot-form" onSubmit={saveSlots}><div className="meal-slot-editor">{slots.map((slot, index) => <div className="meal-slot-setting" key={slot.editorKey}><Input value={slot.label} maxLength={32} required onChange={(event) => setSlots((current) => current.map((item, position) => position === index ? { ...item, label: event.target.value } : item))} /><Button type="button" variant="ghost" size="icon" disabled={!index} onClick={() => moveSlot(index, -1)}><ArrowUp size={16} /></Button><Button type="button" variant="ghost" size="icon" disabled={index === slots.length - 1} onClick={() => moveSlot(index, 1)}><ArrowDown size={16} /></Button><Button type="button" variant="ghost" size="icon" disabled={slots.length === 1} onClick={() => setSlots((current) => current.filter((_, position) => position !== index))}><Trash2 size={16} /></Button></div>)}</div><div className="meal-slot-actions"><Button type="button" variant="secondary" disabled={slots.length >= 8} onClick={() => setSlots((current) => [...current, { id: "", label: "", editorKey: crypto.randomUUID() }])}><Plus size={16} /> Add section</Button><Button>Save sections</Button></div></form></section>
     <section className="api-key-section"><div className="section-heading"><div><p className="eyebrow">Developer access</p><h2>API keys</h2></div><KeyRound size={20} /></div>

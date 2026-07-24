@@ -22,6 +22,7 @@ data class MealSlot(val id: String, val label: String)
 
 data class PreferencesView(
     val measurementSystem: String,
+    val appearance: String,
     val mealSlots: List<MealSlot>,
 )
 
@@ -124,13 +125,17 @@ class TenantService(
             profile?.getString("preferredMeasurementSystem")
                 ?: preferences?.getString("measurementSystem")
                 ?: "original"
+        val appearance =
+            profile?.getString("appearance")
+                ?.takeIf { it in appearances }
+                ?: "system"
         val slots =
             (preferences?.get("mealSlots") as? List<*>)
                 ?.mapNotNull { it as? Document }
                 ?.map { MealSlot(it.getString("id"), it.getString("label")) }
                 ?.takeIf(List<MealSlot>::isNotEmpty)
                 ?: defaultSlots
-        return PreferencesView(measurement, slots)
+        return PreferencesView(measurement, appearance, slots)
     }
 
     fun updateMeasurement(principal: TableplanPrincipal, value: String): PreferencesView {
@@ -154,6 +159,23 @@ class TenantService(
                 Updates.set("preferences.measurementSystem", value),
                 Updates.set("updatedAt", now),
             ),
+        )
+        return preferences(principal)
+    }
+
+    fun updateAppearance(principal: TableplanPrincipal, value: String): PreferencesView {
+        requireMembership(principal)
+        if (value !in appearances) {
+            throw ApiException(400, "appearance_invalid", "Appearance must be system, light, or dark.")
+        }
+        profiles.updateOne(
+            Filters.eq("_id", principal.userId),
+            Updates.combine(
+                Updates.set("userId", principal.userId),
+                Updates.set("appearance", value),
+                Updates.set("updatedAt", Date.from(clock.instant())),
+            ),
+            com.mongodb.client.model.UpdateOptions().upsert(true),
         )
         return preferences(principal)
     }
@@ -325,6 +347,7 @@ class TenantService(
         )
 
     companion object {
+        private val appearances = setOf("system", "light", "dark")
         val defaultSlots =
             listOf(
                 MealSlot("breakfast", "Breakfast"),

@@ -140,6 +140,7 @@ export interface PublicShoppingItemUpdate {
 
 export interface Preferences {
   measurementSystem: "original" | "metric" | "us";
+  appearance: "system" | "light" | "dark";
   mealSlots: Array<{ id: string; label: string }>;
 }
 
